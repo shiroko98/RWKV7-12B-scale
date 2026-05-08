@@ -20,6 +20,7 @@
   - support multiple depth-pruning strategies
   - keep first / last layers configurable
   - save pruning metadata for each run
+  - prefer final layer counts that are friendly to future parallel partitioning
 
 [PENDING] Add evaluation workflow:
   - perplexity on a small but standard dataset
@@ -32,9 +33,29 @@
   - importance-based (data-free proxy)
   - redundancy-based (neighbor-delta proxy)
 
+[PENDING] Choose the main target depth with two constraints:
+  - stay near the 12B parameter budget
+  - prefer total layer counts divisible by common pipeline split factors such as 2 / 4 / 8
+
+[DONE] Main target depth decision:
+  - primary target: 56 layers
+  - reason: rounds to the 12B class and is friendly to 2 / 4 / 8 way future partitioning
+  - comparison target: 54 layers
+
 [PENDING] Record experiment results:
   - dropped layers
   - output path
   - ppl result
   - repetition metrics
   - qualitative sample notes
+
+[IN PROGRESS] Prepare a server-ready experiment pack:
+  - generate all current pruning variants locally
+  - create a manifest for batch evaluation
+  - provide one command to run all evaluations on CUDA
+
+[DONE] Generated current 56-layer candidates:
+  - rwkv7-g1f-12b-56l-uniform
+  - rwkv7-g1f-12b-56l-last6
+  - rwkv7-g1f-12b-56l-importance
+  - rwkv7-g1f-12b-56l-neighbor-delta
