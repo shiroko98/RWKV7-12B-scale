@@ -16,6 +16,7 @@ class RWKVTokenizer:
             self.idx2token[idx] = token
 
         self.token2idx = {value: key for key, value in self.idx2token.items()}
+        self.unknown_token = b"\xef\xbf\xbd"
         self.table = [[[] for _ in range(256)] for _ in range(256)]
         self.good = [set() for _ in range(256)]
         self.wlen = [0 for _ in range(256)]
@@ -49,7 +50,7 @@ class RWKVTokenizer:
         return tokens
 
     def decode_bytes(self, tokens: list[int]) -> bytes:
-        return b"".join(self.idx2token[token] for token in tokens)
+        return b"".join(self.idx2token.get(token, self.unknown_token) for token in tokens)
 
     def encode(self, src: str) -> list[int]:
         return self.encode_bytes(src.encode("utf-8"))
@@ -57,3 +58,5 @@ class RWKVTokenizer:
     def decode(self, tokens: list[int]) -> str:
         return self.decode_bytes(tokens).decode("utf-8", errors="replace")
 
+    def count_unknown(self, tokens: list[int]) -> int:
+        return sum(1 for token in tokens if token not in self.idx2token)

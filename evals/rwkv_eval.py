@@ -169,6 +169,7 @@ def generate_text(
 
     text = tokenizer.decode(generated_tokens)
     metrics = repetition_metrics(text, generated_tokens)
+    metrics["unknown_token_count"] = tokenizer.count_unknown(generated_tokens)
     return {"prompt": prompt, "text": text, "metrics": metrics}
 
 

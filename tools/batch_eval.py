@@ -98,7 +98,20 @@ def main() -> None:
         print(f"\n=== eval {model_name} ===")
         print(" ".join(cmd))
         if not args.dry_run:
-            subprocess.run(cmd, check=True)
+            completed = subprocess.run(cmd, check=False)
+            if completed.returncode != 0:
+                summary.append(
+                    {
+                        "name": model_name,
+                        "strategy": item["strategy"],
+                        "target_layers": item["target_layers"],
+                        "output_model": model_path,
+                        "error": f"evaluation failed with exit code {completed.returncode}",
+                    }
+                )
+                print(f"Evaluation failed for {model_name}, continuing to the next model.")
+                continue
+
             result = json.loads(json_out.read_text(encoding="utf-8"))
             summary.append(
                 {
