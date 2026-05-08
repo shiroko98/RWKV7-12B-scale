@@ -5,6 +5,7 @@ import json
 import subprocess
 import sys
 from pathlib import Path
+from pathlib import PureWindowsPath
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -31,21 +32,41 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
+def _basename_from_any_path(path_str: str) -> str:
+    if "\\" in path_str or (len(path_str) >= 2 and path_str[1] == ":"):
+        return PureWindowsPath(path_str).name
+    return Path(path_str).name
+
+
+def resolve_model_path(manifest_path: Path, model_path: str) -> str:
+    candidate = Path(model_path)
+    if candidate.exists():
+        return str(candidate)
+
+    fallback = manifest_path.parent / _basename_from_any_path(model_path)
+    if fallback.exists():
+        return str(fallback)
+
+    return model_path
+
+
 def main() -> None:
     args = parse_args()
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
-    manifest = json.loads(Path(args.manifest).read_text(encoding="utf-8"))
+    manifest_path = Path(args.manifest)
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     summary: list[dict] = []
 
     for item in manifest:
         model_name = item["name"]
         json_out = output_dir / f"{model_name}.eval.json"
+        model_path = resolve_model_path(manifest_path, item["output_model"])
         cmd = [
             args.python,
             str(ROOT / "evals" / "rwkv_eval.py"),
             "--model-path",
-            item["output_model"],
+            model_path,
             "--tokenizer-path",
             args.tokenizer_path,
             "--task",
@@ -84,7 +105,7 @@ def main() -> None:
                     "name": model_name,
                     "strategy": item["strategy"],
                     "target_layers": item["target_layers"],
-                    "output_model": item["output_model"],
+                    "output_model": model_path,
                     "ppl": result.get("ppl", {}),
                     "generation_metrics": result.get("generation", {}).get("metrics", {}),
                 }
