@@ -1,0 +1,40 @@
+[DONE] Confirm source checkpoint path:
+  D:\codes\RWKV7-12B-scale\rwkv7-g1f-13.3b-20260415-ctx8192.pth
+
+[DONE] Confirm tokenizer path:
+  D:\codes\RWKV7-12B-scale\tokenizer\rwkv_vocab_v20250609.txt
+
+[DONE] Confirm preferred runtime:
+  conda env = model
+  CPU-first validation is acceptable
+
+[DONE] Import notes from check_list.txt:
+  - demo needs a model path without the .pth suffix
+  - vocab path must be fixed
+  - args.vocab_size should be 65536
+  - args.head_size should be 64
+  - prefer bf16 over fp16 for compatibility
+
+[IN PROGRESS] Build a repeatable pruning workflow:
+  - turn prune_layers.py into a configurable CLI
+  - support multiple depth-pruning strategies
+  - keep first / last layers configurable
+  - save pruning metadata for each run
+
+[PENDING] Add evaluation workflow:
+  - perplexity on a small but standard dataset
+  - long-form generation with repetition diagnostics
+  - CPU-safe smoke test first, then fuller runs if practical
+
+[PENDING] Compare layer-dropping strategies:
+  - uniform baseline
+  - last-layer-preserving
+  - importance-based (data-free proxy)
+  - redundancy-based (neighbor-delta proxy)
+
+[PENDING] Record experiment results:
+  - dropped layers
+  - output path
+  - ppl result
+  - repetition metrics
+  - qualitative sample notes
