@@ -175,6 +175,20 @@ Reference comparison on `wikitext2` with `--token-budget 8192 --max-docs 128 --m
 - expansion `uniform_interp`: `PPL ~= 60.58`, unusable
 - expansion `tail_interp`: `PPL ~= 84.79`, unusable
 
+Copy-focused follow-up results on the same evaluation flow:
+
+- `tail_copy`: `PPL ~= 12.78`, best expansion result so far
+- `boundary-delta-copy`: `PPL ~= 14.47`, second-best and more balanced than `uniform_copy`
+- `uniform_copy`: `PPL ~= 16.14`
+- `importance-copy`: `PPL ~= 16.65`
+
+Current expansion ranking:
+
+- `tail_copy` is the strongest expansion candidate so far.
+- `boundary-delta-copy` is a credible second option.
+- `importance-copy` does not beat the plain `uniform_copy` baseline in this round.
+- even the best expansion result still trails the best pruning result.
+
 Create a Linux-server expansion manifest if needed:
 
 ```bash

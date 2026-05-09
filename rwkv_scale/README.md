@@ -109,6 +109,20 @@ Working conclusion:
 - If we continue direct expansion, the next round should stay on the copy side.
 - The most promising immediate search space is which original layers to duplicate, not how to interpolate between layers.
 
+Copy-only follow-up snapshot on the same evaluation flow:
+
+- `tail_copy`: `PPL ~= 12.78`, best expansion result so far
+- `boundary_delta_copy`: `PPL ~= 14.47`, second-best and fairly balanced
+- `uniform_copy`: `PPL ~= 16.14`
+- `importance_copy`: `PPL ~= 16.65`
+
+Updated conclusion after the copy-focused round:
+
+- `tail_copy` is now the strongest direct expansion variant.
+- `boundary_delta_copy` is the next most promising heuristic.
+- the normalized-weight-norm `importance_copy` heuristic did not beat `uniform_copy` here.
+- even after this improvement, direct expansion still trails the best pruning result (`PPL ~= 10.24`).
+
 ## Expansion strategies
 
 - `uniform_interp`: uniformly insert interpolated layers between interior layers

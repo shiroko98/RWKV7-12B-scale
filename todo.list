@@ -80,17 +80,19 @@
   - make_server_manifest.py now preserves the relative path under outputs/
   - this supports outputs/expanded/ and outputs/expanded_copy_focus/ equally
 
-[IN PROGRESS] Prepare the next copy-focused expansion round:
-  - generate copy-focused checkpoints into outputs/expanded_copy_focus/
-  - rewrite a Linux manifest for that pack
-  - run the same batch eval flow on server
+[DONE] Prepare the copy-focused expansion round:
+  - generated copy-focused checkpoints into outputs/expanded_copy_focus/
+  - rewrote a Linux manifest for that pack
+  - ran the same batch eval flow on server
 
-[PENDING] Compare copy-focused variants:
-  - uniform_copy
-  - tail_copy
-  - importance_copy
-  - boundary_delta_copy
-  - decide whether any layer-selection heuristic beats plain uniform_copy
+[DONE] Compare copy-focused variants:
+  - uniform_copy: PPL ~= 16.14
+  - tail_copy: PPL ~= 12.78, best expansion result so far
+  - importance_copy: PPL ~= 16.65
+  - boundary_delta_copy: PPL ~= 14.47, second-best
+  - result: tail-focused copying beats plain uniform copying
+  - result: normalized-weight-norm importance copying does not beat uniform_copy in this round
+  - result: boundary-delta copying is promising, but still behind tail_copy
 
 [PENDING] Decide whether direct expansion still deserves another round after copy-focused results:
   - if copy-focused expansion still trails pruning badly, keep pruning as the stronger baseline
