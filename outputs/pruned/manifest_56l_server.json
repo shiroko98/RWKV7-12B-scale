@@ -1,0 +1,42 @@
+[
+  {
+    "name": "rwkv7-g1f-12b-56l-uniform",
+    "strategy": "uniform",
+    "target_layers": 56,
+    "preserve_first": 1,
+    "preserve_last": 1,
+    "force_keep": [],
+    "output_model": "/mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/outputs/pruned/rwkv7-g1f-12b-56l-uniform.pth",
+    "metadata_out": "/mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/outputs/pruned/rwkv7-g1f-12b-56l-uniform.json"
+  },
+  {
+    "name": "rwkv7-g1f-12b-56l-last6",
+    "strategy": "last_layer_preserving",
+    "target_layers": 56,
+    "preserve_first": 1,
+    "preserve_last": 6,
+    "force_keep": [],
+    "output_model": "/mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/outputs/pruned/rwkv7-g1f-12b-56l-last6.pth",
+    "metadata_out": "/mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/outputs/pruned/rwkv7-g1f-12b-56l-last6.json"
+  },
+  {
+    "name": "rwkv7-g1f-12b-56l-importance",
+    "strategy": "importance",
+    "target_layers": 56,
+    "preserve_first": 1,
+    "preserve_last": 4,
+    "force_keep": [],
+    "output_model": "/mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/outputs/pruned/rwkv7-g1f-12b-56l-importance.pth",
+    "metadata_out": "/mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/outputs/pruned/rwkv7-g1f-12b-56l-importance.json"
+  },
+  {
+    "name": "rwkv7-g1f-12b-56l-neighbor-delta",
+    "strategy": "neighbor_delta",
+    "target_layers": 56,
+    "preserve_first": 1,
+    "preserve_last": 4,
+    "force_keep": [],
+    "output_model": "/mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/outputs/pruned/rwkv7-g1f-12b-56l-neighbor-delta.pth",
+    "metadata_out": "/mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/outputs/pruned/rwkv7-g1f-12b-56l-neighbor-delta.json"
+  }
+]

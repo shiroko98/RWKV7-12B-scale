@@ -3,9 +3,11 @@
 *.bin
 __pycache__/
 *.pyc
-outputs/
 artifacts/
 eval_cache/
 hf_cache/
 tmp/
-
+outputs/**/*.pth
+outputs/**/*.pt
+outputs/**/*.bin
+outputs/**/*.txt

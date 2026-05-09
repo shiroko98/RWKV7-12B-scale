@@ -1,0 +1,11 @@
+{
+  "model_path": "D:\\codes\\RWKV7-12B-scale\\outputs\\pruned\\rwkv7-g1f-12b-56l-uniform.pth",
+  "device": "cpu",
+  "dtype": "bf16",
+  "ppl": {
+    "dataset": "lambada",
+    "ppl": 31.146811073058448,
+    "tokens": 32,
+    "nll": 110.03877973556519
+  }
+}
