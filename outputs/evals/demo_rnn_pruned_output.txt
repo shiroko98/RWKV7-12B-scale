@@ -1,0 +1,167 @@
+python demo_rnn.py 
+
+Using CUDA float16. Loading /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/outputs/pruned/rwkv7-g1f-12b-54l-uniform ...
+
+Prefilling prompt (note: using RNN mode to prefill is very inefficient)
+
+User: 帮我写一篇散文
+
+Assistant: <think
+> [probability 99.95%]
+>( [probability 0.04%]
+></ [probability 0.00%]
+>` [probability 0.00%]
+>" [probability 0.00%]
+>[ [probability 0.00%]
+>- [probability 0.00%]
+( [probability 0.00%]
+>\ [probability 0.00%]
+>/ [probability 0.00%]
+
+
+--[ Trial 0 ]----------------- User: 帮我写一篇散文
+
+Assistant: <think>
+</think>
+《静默的对话》
+每个人都曾拥有一个独特的声音，一种与世界对话的方式。而此刻，我选择在寂静中聆听。
+书店的午后，总是带着一种近乎神圣的安静。阳光透过木格窗棂，将整个空间切割成柔和的几何体。光束里，无数微小的尘埃在缓慢舞动，像是被无形的手指轻轻拨动。我坐在角落的扶手椅上，面前是一本已经翻旧的书，书页边缘微微卷曲，散发出淡淡的墨香。
+书页间，我不仅看到文字，还看到那些曾经拥有这本书的人的指纹。他们的思想，他们的孤独，他们的思索，都藏在这些细小的凹痕里。我轻轻抚摸书页，仿佛在与这些过去的读者进行一场静默的对话。
+这是一种奇妙的交流，一种无声的相遇。我并不需要声音，也不需要眼神的交流。在这安静的时刻，我与这些文字产生了一种深刻的共鸣。
+我听到远处传来轻微的翻书声，目光相遇，却又立即移开。每个人都在寻找那属于自己的一页，一段独属于自己的篇章。而我，则在这安静的氛围中，找到了一种与他人的平静交流。
+这不是一种言语的对话，而是一种灵魂的交流。我们在这安静的氛围中，彼此倾听，彼此沉默，彼此的内心世界，在这一刻，似乎也在这一刻，彼此靠近了一些。
+我合上书本，轻轻站起身。窗外的阳光已经移到了街道，而我的心，也在这一刻，似乎找到了一个平静的角落。
+离开书店，我走入拥挤的街道。我看到，人们匆忙的身影，嘈杂的声音，以及这个城市的脉搏。我的心，却在这一刻，似乎在这一刻，似乎在这一刻，似乎在这一刻，似乎在这一刻，似乎在这一刻，似乎在这一刻，似乎在这一刻，似乎在这一刻，似乎在这一刻，似乎在这一刻，似乎在这一刻，似乎在这一刻，似乎在这一刻，似乎在这一刻，似乎在这一刻，似乎在这一刻，似乎在这一刻，似乎在这一刻，似乎在这一刻，似乎在^CTraceback (most recent call last):
+  File "/mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/demo_rnn.py", line 330, in <module>
+    out, state = model.forward(token, state)
+KeyboardInterrupt
+^C^C^C
+(train_rwkv) root@localhost:/mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale# python demo_rnn.py 
+
+Using CUDA float16. Loading /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/outputs/pruned/rwkv7-g1f-12b-56l-importance ...
+
+Prefilling prompt (note: using RNN mode to prefill is very inefficient)
+
+User: 帮我写一篇散文
+
+Assistant: <think
+> [probability 96.30%]
+></ [probability 3.56%]
+>" [probability 0.04%]
+>` [probability 0.02%]
+>\ [probability 0.01%]
+>< [probability 0.01%]
+ > [probability 0.01%]
+>[ [probability 0.01%]
+>") [probability 0.00%]
+>/ [probability 0.00%]
+
+
+--[ Trial 0 ]----------------- User: 帮我写一篇散文
+
+Assistant: <think>好的用户让我帮忙写一篇散文。首先，我需要确定散文的主题和风格。散文比较自由，但用户没有给出具体方向，可能需要我选择一个常见且能引起共鸣的主题。比如季节变化、自然景色或者生活感悟之类的主题比较安全。
+接下来，考虑用户可能的深层需求。他们可能需要一篇情感真挚、描写细腻的散文，用于某种特定场景，比如学校作业、社交媒体分享，或者个人兴趣创作。也可能需要展示一定的文学水平，所以语言要优美，结构要清晰。
+然后，我需要确保散文有明确的主题和情感线索。比如以“秋日”为主题，描写秋天的景色变化，从早晨到夜晚，穿插个人回忆和感悟，这样结构清晰，情感层层递进。同时加入一些感官细节，比如视觉（树叶颜色）、听觉（风声）、触觉（风凉），增强画面感。
+还要注意语言风格，散文需要抒情但不夸张，用词要准确生动。比如“银色的晨光”“枫红像火”这些比喻能让画面更生动。同时，加入一些个人记忆，比如祖母的话，让散文更有温度和深度。
+最后检查是否符合散文的特点：自由流畅的结构，抒情但不刻意，有起承转合的情感变化。确保没有太正式或学术化的表达，保持亲切感和真实感。这样应该能满足用户需求，提供一篇既有美感又有深度的散文。</think>
+**秋日记**  
+晨起时推开窗，银色的晨光像一层薄霜，落在院角那棵老 maple 树上。树叶还未完全转色，边缘已透出些许黄红，像被秋天轻轻咬过的羊皮纸边缘。风从东边山头过来，凉丝丝地贴着皮肤走，带走了夏日最后一点黏腻的热度。  
+我想起祖母说过的话：“秋天是给世界收拾屋子的季节。”她总爱坐在门前那把褪色的藤椅上，看落叶像信纸一样飘下来，落在屋檐下挂着的那只旧风铃上。风铃响起来时，她会说：“听见没？秋天在写字。”  
+午后太阳斜过屋顶时，整条街都慢下来了。卖豆腐的老人坐在门口晒太阳，他那只总打打打打打打打打打打打打打打打打打打打打打打打打打打打打打打打打打打打打打打打打打打打打打打打打打打打打打打打打打打打打打打打打打打打打打打打打打打打打打打打打打打打打打打打打打打打打打打打打打打打打^CTraceback (most recent call last):
+  File "/mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/demo_rnn.py", line 330, in <module>
+    out, state = model.forward(token, state)
+KeyboardInterrupt
+^C^C^C^C^C
+(train_rwkv) root@localhost:/mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale# python demo_rnn.py 
+
+Using CUDA float16. Loading /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/outputs/pruned/rwkv7-g1f-12b-56l-last6 ...
+
+Prefilling prompt (note: using RNN mode to prefill is very inefficient)
+
+User: 帮我写一篇散文
+
+Assistant: <think
+> [probability 77.52%]
+>< [probability 13.47%]
+>( [probability 0.87%]
+>\ [probability 0.85%]
+>. [probability 0.44%]
+_> [probability 0.38%]
+></ [probability 0.34%]
+>" [probability 0.25%]
+>` [probability 0.22%]
+>: [probability 0.21%]
+
+
+--[ Trial 0 ]----------------- User: 帮我写一篇散文
+
+Assistant: <think>好好好好好好好好好好好好好好好好好好好好好好好好好好好好好好好好好好好好好好好好好好好好好好好好好好好好好好好好三三三三三三三三三三三三三三三三三三三三三三三三三三三三三三三三三三三三三三三三三三三三三三三三三三三三三三三三三三三三三三三三三三三三三三三三三^CTraceback (most recent call last):
+  File "/mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/demo_rnn.py", line 330, in <module>
+    out, state = model.forward(token, state)
+KeyboardInterrupt
+^C^C^C^C
+(train_rwkv) root@localhost:/mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale# python demo_rnn.py 
+
+Using CUDA float16. Loading /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/outputs/pruned/rwkv7-g1f-12b-56l-neighbor-delta ...
+
+Prefilling prompt (note: using RNN mode to prefill is very inefficient)
+
+User: 帮我写一篇散文
+
+Assistant: <think
+> [probability 90.24%]
+></ [probability 9.66%]
+>" [probability 0.04%]
+ > [probability 0.01%]
+>\ [probability 0.01%]
+>` [probability 0.01%]
+>< [probability 0.00%]
+>/ [probability 0.00%]
+>[ [probability 0.00%]
+>") [probability 0.00%]
+
+
+--[ Trial 0 ]----------------- User: 帮我写一篇散文
+
+Assistant: <think>好的用户需要一篇散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散散^CTraceback (most recent call last):
+  File "/mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/demo_rnn.py", line 330, in <module>
+    out, state = model.forward(token, state)
+KeyboardInterrupt
+^C^C^C
+(train_rwkv) root@localhost:/mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale# python demo_rnn.py 
+
+Using CUDA float16. Loading /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/outputs/pruned/rwkv7-g1f-12b-56l-uniform ...
+
+Prefilling prompt (note: using RNN mode to prefill is very inefficient)
+
+User: 帮我写一篇散文
+
+Assistant: <think
+> [probability 99.59%]
+></ [probability 0.30%]
+>" [probability 0.03%]
+>\ [probability 0.02%]
+>< [probability 0.01%]
+>` [probability 0.01%]
+ > [probability 0.00%]
+>[ [probability 0.00%]
+ Распо [probability 0.00%]
+>/ [probability 0.00%]
+
+
+--[ Trial 0 ]----------------- User: 帮我写一篇散文
+
+Assistant: <think>好，用户让我帮他写一篇散文。首先，我需要确定散文的主题和风格。用户没有给出具体主题，可能需要选择一个普遍适用或者能够引起共鸣的主题。比如季节变化、日常生活中的小细节，或者情感类话题。
+接下来，考虑散文的结构。散文通常比较随意，但需要有一定的逻辑流畅性。可能需要以时间顺序或者某个意象展开，比如四季更替，或者某个物品象征某种情感或思想。
+然后，语言风格方面，散文需要细腻的描写和抒情的表达。可能需要使用比喻、拟 personification等修辞手法，让文字更生动。同时，要注意句子的长短变化，避免过于呆板。
+还要考虑用户可能没有明确说明需求，但可能希望文章有深度或者能够反映某种情感或生活哲理。比如通过日常琐事反映人生的无常，或者通过自然现象探讨生命的循环。
+另外，用户可能没有提供具体细节，所以需要假设一些内容。比如选择秋天作为主题，因为秋天常被用来象征变化和成熟，适合展开多层面的描写。
+接下来，开始构思段落结构。开头可以描绘秋天的景象，比如落叶、天气变化等。然后逐步展开描写细节，比如树叶的颜色变化，人们的活动变化，最后升华到生命的主题。
+需要注意避免过于笼统，要加入具体的细节，比如具体的场景描写，比如公园里的落叶堆积，或者人们秋天穿衣服的变化等。同时，加入一些个人感悟，让文章更有深度。
+最后，确保整篇散文流畅连贯，每段都有逻辑衔接，并且整体主题明确。检查语言是否优美，有没有重复或冗长的地方，确保读起来舒服自然。
+</think>秋天来了。它总是这样悄然而至，像一只狡黠的灵魂，在季节更替间悄然更替了世间万物的面貌。晨起时推开窗，那股熟悉的凉意仿佛是秋天提前送来的信使——它裹着霜色，漫过院落里蜷缩的银杏树，又绕过晾晒在院子里的衣物，最终停留在皮肤上，像一只轻巧的手指点破了夏日黏腻的气息。
+银杏树的叶子正经历一场静默的革命。昨日还是鲜亮的绿色，今日却像被时间悄悄染上了一层薄薄的秋意。那些曾经鲜活的生命在这一夜间开始蜕变，从绿色转为橙黄，再蜕变为深红，最终变成一片片燃烧过后的落叶。它们像一群被秋天收敛起来的火焰，飘落在院子里，堆积成一座小小的火山。落叶堆积在院子里，像一群被秋天收敛起来的火焰，它们像一群被秋天收敛起来的火焰，它们像一群被秋天收敛起来的火焰，它们像一群被秋天收敛起来的火焰，它们像一群被秋天收敛起来的火焰，它们像一群被秋天收敛起来的火焰，它们像一群被秋天收敛起来的火焰，它们像一群被秋天收敛起来的火焰，它们像一群被秋天收敛起来的火焰，它们像一群被秋天收敛起来的火焰，它们像一群被秋天收敛起来的火焰，它们像一群被秋天收敛起来的火焰，它们像一群被秋天收敛起来^CTraceback (most recent call last):
+  File "/mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/demo_rnn.py", line 330, in <module>
+    out, state = model.forward(token, state)
+KeyboardInterrupt
+^C^C^C

@@ -10,4 +10,3 @@ tmp/
 outputs/**/*.pth
 outputs/**/*.pt
 outputs/**/*.bin
-outputs/**/*.txt
