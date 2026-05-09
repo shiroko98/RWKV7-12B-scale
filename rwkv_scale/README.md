@@ -2,6 +2,34 @@
 
 This directory contains depth-expansion tooling for growing `rwkv7-g1f-7.2b-20260414-ctx8192.pth` into approximately 12B-class checkpoints without touching the pruning pipeline.
 
+## Directory guide
+
+- `depth_expand.py`
+  Main depth-only expansion entry.
+  Reads a 32-layer checkpoint, inserts new layers by copy or interpolation, and writes a 56-layer checkpoint plus metadata.
+
+- `batch_expand.py`
+  Batch expansion driver.
+  Generates the configured experiment family and writes a manifest for later evaluation.
+
+- `make_server_manifest.py`
+  Rewrites Windows paths in the expansion manifest into Linux server paths.
+
+- `scale.py`
+  Earlier research script focused on depth expansion plus a simpler width-expansion path.
+
+- `scale_2.py`
+  Earlier research script combining depth expansion, width expansion, optional `graft_init_segments`, and head-size changes.
+
+- `scale_g0a.py`
+  Variant of `scale_2.py` specialized for a different base checkpoint family.
+
+- `Net2Net.py`
+  Earlier research script using Net2Net / Net2WiderNet style width expansion.
+
+- `compare_weights.py`
+  Utility for comparing trained expanded weights against an initialization checkpoint, especially the newly added dimensions.
+
 ## Why depth-only first
 
 The local 7.2B and 13.3B checkpoints share the same:
@@ -74,6 +102,12 @@ python rwkv_scale/batch_expand.py ^
   --output-dir D:\codes\RWKV7-12B-scale\outputs\expanded
 ```
 
+This produces:
+
+- metadata JSON files for each expansion candidate in `outputs/expanded/`
+- a manifest at `outputs/expanded/manifest_56l_expand.json`
+- model checkpoints when not using `--plan-only`
+
 ## Server manifest
 
 ```bash
@@ -97,5 +131,29 @@ python tools/batch_eval.py ^
   --dataset wikitext2 ^
   --token-budget 8192 ^
   --max-docs 128 ^
+  --max-new-tokens 1200
+```
+
+Linux server generation:
+
+```bash
+python /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/rwkv_scale/batch_expand.py \
+  --input-model /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/rwkv7-g1f-7.2b-20260414-ctx8192.pth \
+  --output-dir /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/outputs/expanded \
+  --manifest-out /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/outputs/expanded/manifest_56l_expand.json
+```
+
+Linux server evaluation:
+
+```bash
+python /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/tools/batch_eval.py \
+  --manifest /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/outputs/expanded/manifest_56l_expand_server.json \
+  --tokenizer-path /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/tokenizer/rwkv_vocab_v20250609.txt \
+  --device cuda \
+  --dtype bf16 \
+  --task both \
+  --dataset wikitext2 \
+  --token-budget 8192 \
+  --max-docs 128 \
   --max-new-tokens 1200
 ```
