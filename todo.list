@@ -1,61 +1,105 @@
-[DONE] Confirm source checkpoint path:
-  D:\codes\RWKV7-12B-scale\rwkv7-g1f-13.3b-20260415-ctx8192.pth
+[DONE] Confirm source checkpoint paths:
+  - pruning source: D:\codes\RWKV7-12B-scale\rwkv7-g1f-13.3b-20260415-ctx8192.pth
+  - expansion source: D:\codes\RWKV7-12B-scale\rwkv7-g1f-7.2b-20260414-ctx8192.pth
 
 [DONE] Confirm tokenizer path:
-  D:\codes\RWKV7-12B-scale\tokenizer\rwkv_vocab_v20250609.txt
+  - D:\codes\RWKV7-12B-scale\tokenizer\rwkv_vocab_v20250609.txt
 
 [DONE] Confirm preferred runtime:
-  conda env = model
-  CPU-first validation is acceptable
+  - conda env = model
+  - CPU-first validation is acceptable
 
-[DONE] Import notes from check_list.txt:
+[DONE] Import baseline notes from local scripts:
   - demo needs a model path without the .pth suffix
   - vocab path must be fixed
   - args.vocab_size should be 65536
   - args.head_size should be 64
   - prefer bf16 over fp16 for compatibility
 
-[IN PROGRESS] Build a repeatable pruning workflow:
-  - turn prune_layers.py into a configurable CLI
-  - support multiple depth-pruning strategies
-  - keep first / last layers configurable
-  - save pruning metadata for each run
-  - prefer final layer counts that are friendly to future parallel partitioning
+[DONE] Build repeatable pruning workflow:
+  - prune_layers.py is CLI-driven
+  - pruning strategies are modularized under rwkv_prune/
+  - metadata and manifests are written per run
+  - evaluation uses the shared eval pipeline
 
-[PENDING] Add evaluation workflow:
-  - perplexity on a small but standard dataset
-  - long-form generation with repetition diagnostics
-  - CPU-safe smoke test first, then fuller runs if practical
-
-[PENDING] Compare layer-dropping strategies:
-  - uniform baseline
-  - last-layer-preserving
-  - importance-based (data-free proxy)
-  - redundancy-based (neighbor-delta proxy)
-
-[PENDING] Choose the main target depth with two constraints:
-  - stay near the 12B parameter budget
-  - prefer total layer counts divisible by common pipeline split factors such as 2 / 4 / 8
-
-[DONE] Main target depth decision:
+[DONE] Choose pruning target depth:
   - primary target: 56 layers
-  - reason: rounds to the 12B class and is friendly to 2 / 4 / 8 way future partitioning
-  - comparison target: 54 layers
+  - reason: near 12B class and friendly to 2 / 4 / 8 way future partitioning
 
-[PENDING] Record experiment results:
-  - dropped layers
-  - output path
-  - ppl result
-  - repetition metrics
-  - qualitative sample notes
-
-[IN PROGRESS] Prepare a server-ready experiment pack:
-  - generate all current pruning variants locally
-  - create a manifest for batch evaluation
-  - provide one command to run all evaluations on CUDA
-
-[DONE] Generated current 56-layer candidates:
+[DONE] Generate current 56-layer pruning candidates:
   - rwkv7-g1f-12b-56l-uniform
   - rwkv7-g1f-12b-56l-last6
   - rwkv7-g1f-12b-56l-importance
   - rwkv7-g1f-12b-56l-neighbor-delta
+
+[DONE] Evaluate pruning candidates:
+  - dataset: wikitext2
+  - long-generation repetition diagnostics are wired into the same eval flow
+  - current best pruning model: rwkv7-g1f-12b-56l-importance
+  - best observed pruning result: PPL ~= 10.24 with stable generation
+
+[DONE] Inspect 7.2B vs 13.3B structure for expansion planning:
+  - both use n_embd = 4096
+  - both use n_head = 64
+  - both use head_size = 64
+  - main family difference is depth, not main hidden width
+
+[DONE] Choose expansion direction:
+  - first priority: depth-only expansion from 32 layers to 56 layers
+  - keep pruning code untouched and isolate expansion inside rwkv_scale/
+
+[DONE] Generate first-round 56-layer expansion candidates:
+  - rwkv7-g1f-12b-expand-56l-uniform-interp
+  - rwkv7-g1f-12b-expand-56l-uniform-copy
+  - rwkv7-g1f-12b-expand-56l-hybrid-alt
+  - rwkv7-g1f-12b-expand-56l-tail-interp
+
+[DONE] Evaluate first-round expansion candidates:
+  - dataset: wikitext2
+  - settings: token_budget=8192, max_docs=128, max_new_tokens=1200
+  - uniform_copy: PPL ~= 16.14, usable, no hard loop
+  - hybrid_alt: PPL ~= 23.44, strong repetition
+  - uniform_interp: PPL ~= 60.58, unusable
+  - tail_interp: PPL ~= 84.79, unusable
+
+[DONE] Record expansion conclusion locally:
+  - copy-based layer insertion is clearly better than interpolation-based insertion
+  - direct expansion is still clearly behind the best pruning result
+  - from the current performance angle, adding layers by copy is the better direction to continue
+
+[DONE] Add copy-focused follow-up expansion strategies:
+  - tail_copy
+  - importance_copy
+  - boundary_delta_copy
+
+[DONE] Narrow the default expansion batch to copy-only:
+  - batch_expand.py now defaults to copy-focused strategies only
+  - interpolation / hybrid baselines are preserved in rwkv_scale/expand_baselines_56l.json
+
+[DONE] Improve server-manifest rewriting for expansion:
+  - make_server_manifest.py now preserves the relative path under outputs/
+  - this supports outputs/expanded/ and outputs/expanded_copy_focus/ equally
+
+[IN PROGRESS] Prepare the next copy-focused expansion round:
+  - generate copy-focused checkpoints into outputs/expanded_copy_focus/
+  - rewrite a Linux manifest for that pack
+  - run the same batch eval flow on server
+
+[PENDING] Compare copy-focused variants:
+  - uniform_copy
+  - tail_copy
+  - importance_copy
+  - boundary_delta_copy
+  - decide whether any layer-selection heuristic beats plain uniform_copy
+
+[PENDING] Decide whether direct expansion still deserves another round after copy-focused results:
+  - if copy-focused expansion still trails pruning badly, keep pruning as the stronger baseline
+  - if a copy-focused variant closes the gap, consider small-rank adjustments next
+
+[PENDING] Optional second-stage expansion study:
+  - test whether small internal ranks such as w / a / v / g should be adjusted
+  - only do this after the copy-focused depth comparison is complete
+
+[PENDING] Keep outputs and docs synchronized:
+  - commit meaningful checkpoints in git
+  - keep README.md and rwkv_scale/README.md aligned with the latest commands and conclusions

@@ -87,34 +87,98 @@ This is still a hypothesis, not a proof. The planned comparison is:
 2. Reuse the same evaluation pipeline as pruning.
 3. Only if depth-only is still weak, add a second-stage width or small-rank expansion study.
 
+## Current result summary
+
+The first full 56-layer expansion round has already produced a clear directional result:
+
+- Copy-based insertion is much better than interpolation-based insertion.
+- Pure interpolation and interpolation-heavy hybrids degrade badly and tend to loop.
+- Even the best direct expansion result is still weaker than the best pruning result.
+
+Server eval snapshot on `wikitext2` with `--token-budget 8192 --max-docs 128 --max-new-tokens 1200`:
+
+- `uniform_copy`: `PPL ~= 16.14`, usable generation, no hard loop
+- `hybrid_alt`: `PPL ~= 23.44`, strong repetition
+- `uniform_interp`: `PPL ~= 60.58`, unusable
+- `tail_interp`: `PPL ~= 84.79`, unusable
+
+For comparison, the current best 56-layer pruning model (`rwkv7-g1f-12b-56l-importance`) is around `PPL ~= 10.24` on the same evaluation flow.
+
+Working conclusion:
+
+- If we continue direct expansion, the next round should stay on the copy side.
+- The most promising immediate search space is which original layers to duplicate, not how to interpolate between layers.
+
 ## Expansion strategies
 
 - `uniform_interp`: uniformly insert interpolated layers between interior layers
 - `uniform_copy`: uniformly insert copied layers after interior layers
 - `hybrid_alt`: uniformly insert layers and alternate interpolation / copy
 - `tail_interp`: bias interpolated insertions toward later layers
+- `tail_copy`: bias copied insertions toward later layers
+- `importance_copy`: duplicate layers with higher normalized weight-norm scores
+- `boundary_delta_copy`: duplicate layers after stronger neighbor-to-neighbor weight transitions
+
+The current default batch is copy-only:
+
+- `uniform_copy`
+- `tail_copy`
+- `importance_copy`
+- `boundary_delta_copy`
+
+The interpolation and hybrid baselines are still available, but only through an explicit config file so future runs do not accidentally mix strategies.
 
 ## Batch generation
 
 ```bash
 python rwkv_scale/batch_expand.py ^
-  --input-model D:\codes\RWKV7-12B-scale\rwkv7-g1f-7.2b-20260414-ctx8192.pth ^
-  --output-dir D:\codes\RWKV7-12B-scale\outputs\expanded
+  --input-model D:\codes\RWKV7-12B-scale\rwkv7-g1f-7.2b-20260414-ctx8192.pth
 ```
 
 This produces:
 
-- metadata JSON files for each expansion candidate in `outputs/expanded/`
-- a manifest at `outputs/expanded/manifest_56l_expand.json`
+- metadata JSON files for each copy-focused expansion candidate in `outputs/expanded_copy_focus/`
+- a manifest at `outputs/expanded_copy_focus/manifest_copy_focus.json`
 - model checkpoints when not using `--plan-only`
+
+To generate a copy-focused batch into a separate output directory:
+
+```bash
+python rwkv_scale/batch_expand.py ^
+  --input-model D:\codes\RWKV7-12B-scale\rwkv7-g1f-7.2b-20260414-ctx8192.pth ^
+  --config D:\codes\RWKV7-12B-scale\rwkv_scale\copy_focus_56l.json ^
+  --output-dir D:\codes\RWKV7-12B-scale\outputs\expanded_copy_focus ^
+  --manifest-out D:\codes\RWKV7-12B-scale\outputs\expanded_copy_focus\manifest_copy_focus.json
+```
+
+To regenerate the earlier interpolation / hybrid comparison pack:
+
+```bash
+python rwkv_scale/batch_expand.py ^
+  --input-model D:\codes\RWKV7-12B-scale\rwkv7-g1f-7.2b-20260414-ctx8192.pth ^
+  --config D:\codes\RWKV7-12B-scale\rwkv_scale\expand_baselines_56l.json ^
+  --output-dir D:\codes\RWKV7-12B-scale\outputs\expanded ^
+  --manifest-out D:\codes\RWKV7-12B-scale\outputs\expanded\manifest_56l_expand.json
+```
 
 ## Server manifest
 
 ```bash
 python rwkv_scale/make_server_manifest.py ^
-  --input-manifest D:\codes\RWKV7-12B-scale\outputs\expanded\manifest_56l_expand.json ^
+  --input-manifest D:\codes\RWKV7-12B-scale\outputs\expanded_copy_focus\manifest_copy_focus.json ^
   --server-root /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale ^
-  --output-manifest D:\codes\RWKV7-12B-scale\outputs\expanded\manifest_56l_expand_server.json
+  --output-manifest D:\codes\RWKV7-12B-scale\outputs\expanded_copy_focus\manifest_copy_focus_server.json
+```
+
+The manifest rewriter preserves the relative path under `outputs/`, so it also works for `outputs\expanded_copy_focus\...`.
+
+Example:
+
+```bash
+python rwkv_scale/make_server_manifest.py ^
+  --input-manifest D:\codes\RWKV7-12B-scale\outputs\expanded_copy_focus\manifest_copy_focus.json ^
+  --server-root /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale ^
+  --output-manifest D:\codes\RWKV7-12B-scale\outputs\expanded_copy_focus\manifest_copy_focus_server.json
 ```
 
 ## Evaluation
@@ -123,7 +187,7 @@ Use the existing batch evaluation entry with the generated expansion manifest:
 
 ```bash
 python tools/batch_eval.py ^
-  --manifest D:\codes\RWKV7-12B-scale\outputs\expanded\manifest_56l_expand.json ^
+  --manifest D:\codes\RWKV7-12B-scale\outputs\expanded_copy_focus\manifest_copy_focus.json ^
   --tokenizer-path D:\codes\RWKV7-12B-scale\tokenizer\rwkv_vocab_v20250609.txt ^
   --device cuda ^
   --dtype bf16 ^
@@ -139,15 +203,15 @@ Linux server generation:
 ```bash
 python /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/rwkv_scale/batch_expand.py \
   --input-model /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/rwkv7-g1f-7.2b-20260414-ctx8192.pth \
-  --output-dir /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/outputs/expanded \
-  --manifest-out /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/outputs/expanded/manifest_56l_expand.json
+  --output-dir /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/outputs/expanded_copy_focus \
+  --manifest-out /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/outputs/expanded_copy_focus/manifest_copy_focus.json
 ```
 
 Linux server evaluation:
 
 ```bash
 python /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/tools/batch_eval.py \
-  --manifest /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/outputs/expanded/manifest_56l_expand_server.json \
+  --manifest /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/outputs/expanded_copy_focus/manifest_copy_focus_server.json \
   --tokenizer-path /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/tokenizer/rwkv_vocab_v20250609.txt \
   --device cuda \
   --dtype bf16 \

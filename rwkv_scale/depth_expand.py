@@ -35,6 +35,7 @@ class ExpansionPlan:
     insertion_count: int
     inserted_after_layers: list[int]
     insertion_ops: dict[int, str]
+    scores: dict[int, float]
     notes: str
 
 
@@ -45,7 +46,15 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--strategy",
         required=True,
-        choices=["uniform_interp", "uniform_copy", "hybrid_alt", "tail_interp"],
+        choices=[
+            "uniform_interp",
+            "uniform_copy",
+            "hybrid_alt",
+            "tail_interp",
+            "tail_copy",
+            "importance_copy",
+            "boundary_delta_copy",
+        ],
     )
     parser.add_argument("--target-layers", type=int, default=56)
     parser.add_argument("--alpha", type=float, default=0.5, help="Interpolation weight for the left layer.")
@@ -122,7 +131,52 @@ def _uniform_positions(count: int, pick_count: int) -> list[int]:
     return sorted(deduped)
 
 
-def build_plan(info: LayerInfo, target_layers: int, strategy: str) -> ExpansionPlan:
+def _sample_tensor(tensor: torch.Tensor, sample_size: int = 256) -> torch.Tensor:
+    flat = tensor.reshape(-1).float()
+    if flat.numel() <= sample_size:
+        return flat
+    idx = torch.linspace(0, flat.numel() - 1, steps=sample_size, dtype=torch.long)
+    return flat.index_select(0, idx)
+
+
+def _layer_signature(state_dict: OrderedDict, layer_id: int) -> torch.Tensor:
+    keys = [
+        f"blocks.{layer_id}.att.key.weight",
+        f"blocks.{layer_id}.att.value.weight",
+        f"blocks.{layer_id}.ffn.key.weight",
+        f"blocks.{layer_id}.ffn.value.weight",
+    ]
+    samples = [_sample_tensor(state_dict[key], sample_size=128) for key in keys]
+    stats = []
+    for key in keys:
+        tensor = state_dict[key].float()
+        stats.extend(
+            [
+                tensor.mean(),
+                tensor.std(),
+                tensor.norm() / math.sqrt(tensor.numel()),
+            ]
+        )
+    return torch.cat(samples + [torch.stack(stats)])
+
+
+def _importance_score(state_dict: OrderedDict, layer_id: int) -> float:
+    keys = [
+        f"blocks.{layer_id}.att.key.weight",
+        f"blocks.{layer_id}.att.value.weight",
+        f"blocks.{layer_id}.att.receptance.weight",
+        f"blocks.{layer_id}.att.output.weight",
+        f"blocks.{layer_id}.ffn.key.weight",
+        f"blocks.{layer_id}.ffn.value.weight",
+    ]
+    score = 0.0
+    for key in keys:
+        tensor = state_dict[key].float()
+        score += float(tensor.norm() / math.sqrt(tensor.numel()))
+    return score
+
+
+def build_plan(info: LayerInfo, state_dict: OrderedDict, target_layers: int, strategy: str) -> ExpansionPlan:
     insertion_count = target_layers - info.n_layer
     if insertion_count <= 0:
         raise ValueError(f"target_layers must be larger than original layer count ({info.n_layer}).")
@@ -133,11 +187,26 @@ def build_plan(info: LayerInfo, target_layers: int, strategy: str) -> ExpansionP
             f"Need {insertion_count} insertions, but only {len(eligible_after_layers)} safe interior positions are available."
         )
 
+    scores: dict[int, float] = {layer_id: 0.0 for layer_id in eligible_after_layers}
+
     if strategy in {"uniform_interp", "uniform_copy", "hybrid_alt"}:
         positions = _uniform_positions(len(eligible_after_layers), insertion_count)
         inserted_after_layers = [eligible_after_layers[pos] for pos in positions]
     elif strategy == "tail_interp":
         inserted_after_layers = eligible_after_layers[-insertion_count:]
+    elif strategy == "tail_copy":
+        inserted_after_layers = eligible_after_layers[-insertion_count:]
+    elif strategy == "importance_copy":
+        for layer_id in eligible_after_layers:
+            scores[layer_id] = _importance_score(state_dict, layer_id)
+        ranked = sorted(eligible_after_layers, key=lambda layer_id: (-scores[layer_id], layer_id))
+        inserted_after_layers = sorted(ranked[:insertion_count])
+    elif strategy == "boundary_delta_copy":
+        signatures = {layer_id: _layer_signature(state_dict, layer_id) for layer_id in info.layer_ids}
+        for layer_id in eligible_after_layers:
+            scores[layer_id] = float(torch.norm(signatures[layer_id] - signatures[layer_id + 1], p=2))
+        ranked = sorted(eligible_after_layers, key=lambda layer_id: (-scores[layer_id], layer_id))
+        inserted_after_layers = sorted(ranked[:insertion_count])
     else:
         raise ValueError(f"Unsupported strategy: {strategy}")
 
@@ -156,6 +225,15 @@ def build_plan(info: LayerInfo, target_layers: int, strategy: str) -> ExpansionP
     elif strategy == "tail_interp":
         insertion_ops = {layer_id: "interp" for layer_id in inserted_after_layers}
         notes = "Bias new interpolated layers toward the later part of the network."
+    elif strategy == "tail_copy":
+        insertion_ops = {layer_id: "copy" for layer_id in inserted_after_layers}
+        notes = "Bias copied insertions toward the later part of the network."
+    elif strategy == "importance_copy":
+        insertion_ops = {layer_id: "copy" for layer_id in inserted_after_layers}
+        notes = "Duplicate layers with the highest data-free importance scores."
+    elif strategy == "boundary_delta_copy":
+        insertion_ops = {layer_id: "copy" for layer_id in inserted_after_layers}
+        notes = "Duplicate layers after the strongest neighbor-to-neighbor weight transitions."
 
     return ExpansionPlan(
         strategy=strategy,
@@ -163,6 +241,7 @@ def build_plan(info: LayerInfo, target_layers: int, strategy: str) -> ExpansionP
         insertion_count=insertion_count,
         inserted_after_layers=inserted_after_layers,
         insertion_ops=insertion_ops,
+        scores=scores,
         notes=notes,
     )
 
@@ -299,7 +378,7 @@ def main() -> None:
     if args.inspect_only:
         return
 
-    plan = build_plan(info, args.target_layers, args.strategy)
+    plan = build_plan(info, state_dict, args.target_layers, args.strategy)
     print(f"Strategy         : {plan.strategy}")
     print(f"Strategy notes   : {plan.notes}")
     print(f"Target layers    : {plan.target_layers}")
@@ -317,6 +396,7 @@ def main() -> None:
         "insertions": plan.insertion_count,
         "inserted_after_layers": plan.inserted_after_layers,
         "insertion_ops": plan.insertion_ops,
+        "scores": plan.scores,
         "alpha": args.alpha,
         "n_embd": info.n_embd,
         "vocab_size": info.vocab_size,
@@ -345,4 +425,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

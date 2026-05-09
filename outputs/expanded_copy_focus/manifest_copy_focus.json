@@ -1,0 +1,102 @@
+[
+  {
+    "name": "rwkv7-g1f-12b-expand-56l-uniform-copy",
+    "strategy": "uniform_copy",
+    "target_layers": 56,
+    "alpha": 0.5,
+    "output_model": "outputs\\expanded_copy_focus\\rwkv7-g1f-12b-expand-56l-uniform-copy.pth",
+    "metadata_out": "outputs\\expanded_copy_focus\\rwkv7-g1f-12b-expand-56l-uniform-copy.json",
+    "command": [
+      "D:\\anaconda\\envs\\model\\python.exe",
+      "D:\\codes\\RWKV7-12B-scale\\rwkv_scale\\depth_expand.py",
+      "--input-model",
+      "D:\\codes\\RWKV7-12B-scale\\rwkv7-g1f-7.2b-20260414-ctx8192.pth",
+      "--output-model",
+      "outputs\\expanded_copy_focus\\rwkv7-g1f-12b-expand-56l-uniform-copy.pth",
+      "--strategy",
+      "uniform_copy",
+      "--target-layers",
+      "56",
+      "--alpha",
+      "0.5",
+      "--metadata-out",
+      "outputs\\expanded_copy_focus\\rwkv7-g1f-12b-expand-56l-uniform-copy.json",
+      "--plan-only"
+    ]
+  },
+  {
+    "name": "rwkv7-g1f-12b-expand-56l-tail-copy",
+    "strategy": "tail_copy",
+    "target_layers": 56,
+    "alpha": 0.5,
+    "output_model": "outputs\\expanded_copy_focus\\rwkv7-g1f-12b-expand-56l-tail-copy.pth",
+    "metadata_out": "outputs\\expanded_copy_focus\\rwkv7-g1f-12b-expand-56l-tail-copy.json",
+    "command": [
+      "D:\\anaconda\\envs\\model\\python.exe",
+      "D:\\codes\\RWKV7-12B-scale\\rwkv_scale\\depth_expand.py",
+      "--input-model",
+      "D:\\codes\\RWKV7-12B-scale\\rwkv7-g1f-7.2b-20260414-ctx8192.pth",
+      "--output-model",
+      "outputs\\expanded_copy_focus\\rwkv7-g1f-12b-expand-56l-tail-copy.pth",
+      "--strategy",
+      "tail_copy",
+      "--target-layers",
+      "56",
+      "--alpha",
+      "0.5",
+      "--metadata-out",
+      "outputs\\expanded_copy_focus\\rwkv7-g1f-12b-expand-56l-tail-copy.json",
+      "--plan-only"
+    ]
+  },
+  {
+    "name": "rwkv7-g1f-12b-expand-56l-importance-copy",
+    "strategy": "importance_copy",
+    "target_layers": 56,
+    "alpha": 0.5,
+    "output_model": "outputs\\expanded_copy_focus\\rwkv7-g1f-12b-expand-56l-importance-copy.pth",
+    "metadata_out": "outputs\\expanded_copy_focus\\rwkv7-g1f-12b-expand-56l-importance-copy.json",
+    "command": [
+      "D:\\anaconda\\envs\\model\\python.exe",
+      "D:\\codes\\RWKV7-12B-scale\\rwkv_scale\\depth_expand.py",
+      "--input-model",
+      "D:\\codes\\RWKV7-12B-scale\\rwkv7-g1f-7.2b-20260414-ctx8192.pth",
+      "--output-model",
+      "outputs\\expanded_copy_focus\\rwkv7-g1f-12b-expand-56l-importance-copy.pth",
+      "--strategy",
+      "importance_copy",
+      "--target-layers",
+      "56",
+      "--alpha",
+      "0.5",
+      "--metadata-out",
+      "outputs\\expanded_copy_focus\\rwkv7-g1f-12b-expand-56l-importance-copy.json",
+      "--plan-only"
+    ]
+  },
+  {
+    "name": "rwkv7-g1f-12b-expand-56l-boundary-delta-copy",
+    "strategy": "boundary_delta_copy",
+    "target_layers": 56,
+    "alpha": 0.5,
+    "output_model": "outputs\\expanded_copy_focus\\rwkv7-g1f-12b-expand-56l-boundary-delta-copy.pth",
+    "metadata_out": "outputs\\expanded_copy_focus\\rwkv7-g1f-12b-expand-56l-boundary-delta-copy.json",
+    "command": [
+      "D:\\anaconda\\envs\\model\\python.exe",
+      "D:\\codes\\RWKV7-12B-scale\\rwkv_scale\\depth_expand.py",
+      "--input-model",
+      "D:\\codes\\RWKV7-12B-scale\\rwkv7-g1f-7.2b-20260414-ctx8192.pth",
+      "--output-model",
+      "outputs\\expanded_copy_focus\\rwkv7-g1f-12b-expand-56l-boundary-delta-copy.pth",
+      "--strategy",
+      "boundary_delta_copy",
+      "--target-layers",
+      "56",
+      "--alpha",
+      "0.5",
+      "--metadata-out",
+      "outputs\\expanded_copy_focus\\rwkv7-g1f-12b-expand-56l-boundary-delta-copy.json",
+      "--plan-only"
+    ]
+  }
+]

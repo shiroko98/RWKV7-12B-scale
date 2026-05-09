@@ -2,6 +2,12 @@
 
 This workspace is for depth-pruning `rwkv7-g1f-13.3b-20260415-ctx8192.pth` down to an approximately 12B checkpoint, then validating the result with lightweight perplexity and repetition checks.
 
+Current status:
+
+- Best pruning result so far is still stronger than direct expansion.
+- In the 32-layer to 56-layer expansion study, copy-based insertion is clearly better than interpolation-based insertion.
+- The next expansion round should stay focused on copy-based depth expansion variants.
+
 ## Local environment
 
 - Workspace: `D:\codes\RWKV7-12B-scale`
@@ -134,36 +140,84 @@ Optional small-dataset alternatives:
 
 The expansion experiments live under `rwkv_scale/` and currently focus on depth-only expansion from the local 7.2B checkpoint to 56 layers.
 
-Generate all configured expansion variants:
+Generate the current copy-focused expansion variants:
 
 ```bash
 python rwkv_scale/batch_expand.py ^
-  --input-model D:\codes\RWKV7-12B-scale\rwkv7-g1f-7.2b-20260414-ctx8192.pth ^
-  --output-dir D:\codes\RWKV7-12B-scale\outputs\expanded ^
-  --manifest-out D:\codes\RWKV7-12B-scale\outputs\expanded\manifest_56l_expand.json
+  --input-model D:\codes\RWKV7-12B-scale\rwkv7-g1f-7.2b-20260414-ctx8192.pth
 ```
 
-Current 56-layer expansion candidates:
+Current default 56-layer expansion candidates:
+
+- `rwkv7-g1f-12b-expand-56l-uniform-copy`
+- `rwkv7-g1f-12b-expand-56l-tail-copy`
+- `rwkv7-g1f-12b-expand-56l-importance-copy`
+- `rwkv7-g1f-12b-expand-56l-boundary-delta-copy`
+
+Previous baseline expansion candidates kept for comparison via explicit config:
 
 - `rwkv7-g1f-12b-expand-56l-uniform-interp`
 - `rwkv7-g1f-12b-expand-56l-uniform-copy`
 - `rwkv7-g1f-12b-expand-56l-hybrid-alt`
 - `rwkv7-g1f-12b-expand-56l-tail-interp`
 
+Current expansion conclusion from server evals:
+
+- `uniform_copy` is the best expansion baseline so far.
+- interpolation-heavy variants show much higher PPL and much worse repetition.
+- even the best expansion result is still clearly behind the best pruning result on the current evaluation flow.
+
+Reference comparison on `wikitext2` with `--token-budget 8192 --max-docs 128 --max-new-tokens 1200`:
+
+- pruning `rwkv7-g1f-12b-56l-importance`: `PPL ~= 10.24`, stable generation
+- expansion `rwkv7-g1f-12b-expand-56l-uniform-copy`: `PPL ~= 16.14`, usable but weaker
+- expansion `hybrid_alt`: `PPL ~= 23.44`, strong repetition
+- expansion `uniform_interp`: `PPL ~= 60.58`, unusable
+- expansion `tail_interp`: `PPL ~= 84.79`, unusable
+
 Create a Linux-server expansion manifest if needed:
 
 ```bash
 python rwkv_scale/make_server_manifest.py ^
-  --input-manifest D:\codes\RWKV7-12B-scale\outputs\expanded\manifest_56l_expand.json ^
+  --input-manifest D:\codes\RWKV7-12B-scale\outputs\expanded_copy_focus\manifest_copy_focus.json ^
   --server-root /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale ^
-  --output-manifest D:\codes\RWKV7-12B-scale\outputs\expanded\manifest_56l_expand_server.json
+  --output-manifest D:\codes\RWKV7-12B-scale\outputs\expanded_copy_focus\manifest_copy_focus_server.json
+```
+
+Create a copy-focused manifest pack for the next expansion round:
+
+```bash
+python rwkv_scale/batch_expand.py ^
+  --input-model D:\codes\RWKV7-12B-scale\rwkv7-g1f-7.2b-20260414-ctx8192.pth ^
+  --config D:\codes\RWKV7-12B-scale\rwkv_scale\copy_focus_56l.json ^
+  --output-dir D:\codes\RWKV7-12B-scale\outputs\expanded_copy_focus ^
+  --manifest-out D:\codes\RWKV7-12B-scale\outputs\expanded_copy_focus\manifest_copy_focus.json
+```
+
+If you want to regenerate the earlier interpolation / hybrid baselines for comparison:
+
+```bash
+python rwkv_scale/batch_expand.py ^
+  --input-model D:\codes\RWKV7-12B-scale\rwkv7-g1f-7.2b-20260414-ctx8192.pth ^
+  --config D:\codes\RWKV7-12B-scale\rwkv_scale\expand_baselines_56l.json ^
+  --output-dir D:\codes\RWKV7-12B-scale\outputs\expanded ^
+  --manifest-out D:\codes\RWKV7-12B-scale\outputs\expanded\manifest_56l_expand.json
+```
+
+Then rewrite it for Linux server paths:
+
+```bash
+python rwkv_scale/make_server_manifest.py ^
+  --input-manifest D:\codes\RWKV7-12B-scale\outputs\expanded_copy_focus\manifest_copy_focus.json ^
+  --server-root /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale ^
+  --output-manifest D:\codes\RWKV7-12B-scale\outputs\expanded_copy_focus\manifest_copy_focus_server.json
 ```
 
 Evaluate the expanded models with the same pipeline:
 
 ```bash
 python tools/batch_eval.py ^
-  --manifest D:\codes\RWKV7-12B-scale\outputs\expanded\manifest_56l_expand.json ^
+  --manifest D:\codes\RWKV7-12B-scale\outputs\expanded_copy_focus\manifest_copy_focus.json ^
   --tokenizer-path D:\codes\RWKV7-12B-scale\tokenizer\rwkv_vocab_v20250609.txt ^
   --device cuda ^
   --dtype bf16 ^
@@ -196,15 +250,40 @@ Expansion generation on Linux server:
 ```bash
 python /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/rwkv_scale/batch_expand.py \
   --input-model /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/rwkv7-g1f-7.2b-20260414-ctx8192.pth \
-  --output-dir /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/outputs/expanded \
-  --manifest-out /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/outputs/expanded/manifest_56l_expand.json
+  --output-dir /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/outputs/expanded_copy_focus \
+  --manifest-out /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/outputs/expanded_copy_focus/manifest_copy_focus.json
 ```
 
 Expansion evaluation on Linux server:
 
 ```bash
 python /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/tools/batch_eval.py \
-  --manifest /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/outputs/expanded/manifest_56l_expand_server.json \
+  --manifest /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/outputs/expanded_copy_focus/manifest_copy_focus_server.json \
+  --tokenizer-path /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/tokenizer/rwkv_vocab_v20250609.txt \
+  --device cuda \
+  --dtype bf16 \
+  --task both \
+  --dataset wikitext2 \
+  --token-budget 8192 \
+  --max-docs 128 \
+  --max-new-tokens 1200
+```
+
+Copy-focused expansion generation on Linux server:
+
+```bash
+python /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/rwkv_scale/batch_expand.py \
+  --input-model /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/rwkv7-g1f-7.2b-20260414-ctx8192.pth \
+  --config /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/rwkv_scale/copy_focus_56l.json \
+  --output-dir /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/outputs/expanded_copy_focus \
+  --manifest-out /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/outputs/expanded_copy_focus/manifest_copy_focus.json
+```
+
+Copy-focused expansion evaluation on Linux server:
+
+```bash
+python /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/tools/batch_eval.py \
+  --manifest /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/outputs/expanded_copy_focus/manifest_copy_focus_server.json \
   --tokenizer-path /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/tokenizer/rwkv_vocab_v20250609.txt \
   --device cuda \
   --dtype bf16 \

@@ -1,0 +1,26 @@
+[
+  {
+    "name": "rwkv7-g1f-12b-expand-56l-uniform-copy",
+    "strategy": "uniform_copy",
+    "target_layers": 56,
+    "alpha": 0.5
+  },
+  {
+    "name": "rwkv7-g1f-12b-expand-56l-tail-copy",
+    "strategy": "tail_copy",
+    "target_layers": 56,
+    "alpha": 0.5
+  },
+  {
+    "name": "rwkv7-g1f-12b-expand-56l-importance-copy",
+    "strategy": "importance_copy",
+    "target_layers": 56,
+    "alpha": 0.5
+  },
+  {
+    "name": "rwkv7-g1f-12b-expand-56l-boundary-delta-copy",
+    "strategy": "boundary_delta_copy",
+    "target_layers": 56,
+    "alpha": 0.5
+  }
+]

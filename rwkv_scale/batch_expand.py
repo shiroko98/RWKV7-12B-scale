@@ -11,26 +11,26 @@ THIS_DIR = Path(__file__).resolve().parent
 
 DEFAULT_EXPERIMENTS = [
     {
-        "name": "rwkv7-g1f-12b-expand-56l-uniform-interp",
-        "strategy": "uniform_interp",
-        "target_layers": 56,
-        "alpha": 0.5,
-    },
-    {
         "name": "rwkv7-g1f-12b-expand-56l-uniform-copy",
         "strategy": "uniform_copy",
         "target_layers": 56,
         "alpha": 0.5,
     },
     {
-        "name": "rwkv7-g1f-12b-expand-56l-hybrid-alt",
-        "strategy": "hybrid_alt",
+        "name": "rwkv7-g1f-12b-expand-56l-tail-copy",
+        "strategy": "tail_copy",
         "target_layers": 56,
         "alpha": 0.5,
     },
     {
-        "name": "rwkv7-g1f-12b-expand-56l-tail-interp",
-        "strategy": "tail_interp",
+        "name": "rwkv7-g1f-12b-expand-56l-importance-copy",
+        "strategy": "importance_copy",
+        "target_layers": 56,
+        "alpha": 0.5,
+    },
+    {
+        "name": "rwkv7-g1f-12b-expand-56l-boundary-delta-copy",
+        "strategy": "boundary_delta_copy",
         "target_layers": 56,
         "alpha": 0.5,
     },
@@ -38,10 +38,13 @@ DEFAULT_EXPERIMENTS = [
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Generate a batch of depth-expanded RWKV checkpoints.")
+    parser = argparse.ArgumentParser(description="Generate a batch of copy-focused depth-expanded RWKV checkpoints.")
     parser.add_argument("--input-model", required=True)
-    parser.add_argument("--output-dir", default=str(ROOT / "outputs" / "expanded"))
-    parser.add_argument("--manifest-out", default=str(ROOT / "outputs" / "expanded" / "manifest_56l_expand.json"))
+    parser.add_argument("--output-dir", default=str(ROOT / "outputs" / "expanded_copy_focus"))
+    parser.add_argument(
+        "--manifest-out",
+        default=str(ROOT / "outputs" / "expanded_copy_focus" / "manifest_copy_focus.json"),
+    )
     parser.add_argument("--python", default=sys.executable)
     parser.add_argument("--config")
     parser.add_argument("--plan-only", action="store_true")
@@ -105,4 +108,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
