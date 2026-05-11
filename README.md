@@ -136,6 +136,28 @@ Optional small-dataset alternatives:
 - `--dataset lambada --dataset-path D:\codes\rwkv\misc\lambada_test.jsonl`
 - `--dataset textfile --dataset-path path\to\your_eval_text.txt`
 
+## Base-model baseline workflow
+
+Evaluate the two original base checkpoints directly as reference baselines:
+
+```bash
+python tools/eval_base_models.py ^
+  --tokenizer-path D:\codes\RWKV7-12B-scale\tokenizer\rwkv_vocab_v20250609.txt ^
+  --device cuda ^
+  --dtype bf16 ^
+  --task both ^
+  --dataset wikitext2 ^
+  --token-budget 8192 ^
+  --max-docs 128 ^
+  --max-new-tokens 1200
+```
+
+This writes:
+
+- `outputs/evals/rwkv7-g1f-7.2b-base.eval.json`
+- `outputs/evals/rwkv7-g1f-13.3b-base.eval.json`
+- `outputs/evals/base_model_summary.json`
+
 ## Expansion workflow
 
 The expansion experiments live under `rwkv_scale/` and currently focus on depth-only expansion from the local 7.2B checkpoint to 56 layers.
@@ -249,6 +271,20 @@ Pruning evaluation on Linux server:
 ```bash
 python /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/tools/batch_eval.py \
   --manifest /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/outputs/pruned/manifest_56l_server.json \
+  --tokenizer-path /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/tokenizer/rwkv_vocab_v20250609.txt \
+  --device cuda \
+  --dtype bf16 \
+  --task both \
+  --dataset wikitext2 \
+  --token-budget 8192 \
+  --max-docs 128 \
+  --max-new-tokens 1200
+```
+
+Base-model baseline evaluation on Linux server:
+
+```bash
+python /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/tools/eval_base_models.py \
   --tokenizer-path /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/tokenizer/rwkv_vocab_v20250609.txt \
   --device cuda \
   --dtype bf16 \

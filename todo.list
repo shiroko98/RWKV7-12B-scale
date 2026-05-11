@@ -80,6 +80,11 @@
   - make_server_manifest.py now preserves the relative path under outputs/
   - this supports outputs/expanded/ and outputs/expanded_copy_focus/ equally
 
+[DONE] Add a dedicated base-model baseline script:
+  - tools/eval_base_models.py evaluates the original 7.2B and 13.3B checkpoints directly
+  - output files match the existing eval layout under outputs/evals/
+  - intended use: establish raw PPL / generation baselines before comparing pruning and expansion variants
+
 [DONE] Prepare the copy-focused expansion round:
   - generated copy-focused checkpoints into outputs/expanded_copy_focus/
   - rewrote a Linux manifest for that pack
