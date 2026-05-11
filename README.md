@@ -285,6 +285,8 @@ Base-model baseline evaluation on Linux server:
 
 ```bash
 python /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/tools/eval_base_models.py \
+  --model-7b-path /mnt/data/Models/RWKV-7/rwkv7-g1f-7.2b-20260414-ctx8192.pt \
+  --model-13b-path /mnt/data/Models/RWKV-7/rwkv7-g1f-13.3b-20260415-ctx8192.pt \
   --tokenizer-path /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/tokenizer/rwkv_vocab_v20250609.txt \
   --device cuda \
   --dtype bf16 \

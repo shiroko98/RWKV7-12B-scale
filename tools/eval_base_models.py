@@ -44,21 +44,30 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--top-p", type=float, default=0.8)
     parser.add_argument("--summary-out", default=str(ROOT / "outputs" / "evals" / "base_model_summary.json"))
     parser.add_argument("--config", help="Optional JSON list overriding the default two-model baseline set.")
+    parser.add_argument("--model-7b-path", help="Optional override path for the 7.2B base checkpoint.")
+    parser.add_argument("--model-13b-path", help="Optional override path for the 13.3B base checkpoint.")
     parser.add_argument("--dry-run", action="store_true")
     return parser.parse_args()
 
 
-def load_models(config_path: str | None) -> list[dict]:
-    if not config_path:
-        return DEFAULT_MODELS
-    return json.loads(Path(config_path).read_text(encoding="utf-8"))
+def load_models(config_path: str | None, model_7b_path: str | None, model_13b_path: str | None) -> list[dict]:
+    if config_path:
+        return json.loads(Path(config_path).read_text(encoding="utf-8"))
+
+    models = [dict(item) for item in DEFAULT_MODELS]
+    for item in models:
+        if item["name"] == "rwkv7-g1f-7.2b-base" and model_7b_path:
+            item["model_path"] = model_7b_path
+        if item["name"] == "rwkv7-g1f-13.3b-base" and model_13b_path:
+            item["model_path"] = model_13b_path
+    return models
 
 
 def main() -> None:
     args = parse_args()
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
-    models = load_models(args.config)
+    models = load_models(args.config, args.model_7b_path, args.model_13b_path)
     summary: list[dict] = []
 
     for item in models:
