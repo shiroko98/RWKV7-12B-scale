@@ -132,6 +132,7 @@ Updated conclusion after the copy-focused round:
 - `tail_copy`: bias copied insertions toward later layers
 - `importance_copy`: duplicate layers with higher normalized weight-norm scores
 - `boundary_delta_copy`: duplicate layers after stronger neighbor-to-neighbor weight transitions
+- `rys_repeat`: repeat a contiguous layer block in RYS style until the target depth is reached
 
 The current default batch is copy-only:
 
@@ -141,6 +142,48 @@ The current default batch is copy-only:
 - `boundary_delta_copy`
 
 The interpolation and hybrid baselines are still available, but only through an explicit config file so future runs do not accidentally mix strategies.
+
+## RYS-style scan
+
+To test Repeat-Your-Self style contiguous block repetition on the 7.2B to 56-layer expansion task, a dedicated scan config is included:
+
+- `rwkv_scale/rys_scan_56l.json`
+
+This config currently scans:
+
+- start layers: `0`, `8`, `16`, `24`
+- block sizes: `3`, `5`, `7`
+
+The `rys_repeat` strategy repeats a contiguous block as many whole times as possible to reach the requested target depth, and then copies a short prefix of that same block if a remainder is needed.
+
+Generate the default RYS scan pack:
+
+```bash
+python rwkv_scale/batch_expand.py ^
+  --input-model D:\codes\RWKV7-12B-scale\rwkv7-g1f-7.2b-20260414-ctx8192.pth ^
+  --config D:\codes\RWKV7-12B-scale\rwkv_scale\rys_scan_56l.json ^
+  --output-dir D:\codes\RWKV7-12B-scale\outputs\expanded_rys ^
+  --manifest-out D:\codes\RWKV7-12B-scale\outputs\expanded_rys\manifest_rys.json
+```
+
+Build a custom scan config if needed:
+
+```bash
+python rwkv_scale/build_rys_scan_config.py ^
+  --output D:\codes\RWKV7-12B-scale\rwkv_scale\rys_scan_custom.json ^
+  --target-layers 56 ^
+  --starts 0,4,8,12,16,20,24,28 ^
+  --block-sizes 3,5,7
+```
+
+Rewrite the RYS manifest for Linux server paths:
+
+```bash
+python rwkv_scale/make_server_manifest.py ^
+  --input-manifest D:\codes\RWKV7-12B-scale\outputs\expanded_rys\manifest_rys.json ^
+  --server-root /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale ^
+  --output-manifest D:\codes\RWKV7-12B-scale\outputs\expanded_rys\manifest_rys_server.json
+```
 
 ## Batch generation
 

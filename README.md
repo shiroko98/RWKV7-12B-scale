@@ -249,6 +249,25 @@ python rwkv_scale/make_server_manifest.py ^
   --output-manifest D:\codes\RWKV7-12B-scale\outputs\expanded_copy_focus\manifest_copy_focus_server.json
 ```
 
+Generate a RYS-style layer-repeat scan pack:
+
+```bash
+python rwkv_scale/batch_expand.py ^
+  --input-model D:\codes\RWKV7-12B-scale\rwkv7-g1f-7.2b-20260414-ctx8192.pth ^
+  --config D:\codes\RWKV7-12B-scale\rwkv_scale\rys_scan_56l.json ^
+  --output-dir D:\codes\RWKV7-12B-scale\outputs\expanded_rys ^
+  --manifest-out D:\codes\RWKV7-12B-scale\outputs\expanded_rys\manifest_rys.json
+```
+
+Rewrite the RYS scan manifest for Linux server:
+
+```bash
+python rwkv_scale/make_server_manifest.py ^
+  --input-manifest D:\codes\RWKV7-12B-scale\outputs\expanded_rys\manifest_rys.json ^
+  --server-root /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale ^
+  --output-manifest D:\codes\RWKV7-12B-scale\outputs\expanded_rys\manifest_rys_server.json
+```
+
 Evaluate the expanded models with the same pipeline:
 
 ```bash
@@ -336,6 +355,31 @@ Copy-focused expansion evaluation on Linux server:
 ```bash
 python /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/tools/batch_eval.py \
   --manifest /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/outputs/expanded_copy_focus/manifest_copy_focus_server.json \
+  --tokenizer-path /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/tokenizer/rwkv_vocab_v20250609.txt \
+  --device cuda \
+  --dtype bf16 \
+  --task both \
+  --dataset wikitext2 \
+  --token-budget 8192 \
+  --max-docs 128 \
+  --max-new-tokens 1200
+```
+
+RYS-style scan generation on Linux server:
+
+```bash
+python /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/rwkv_scale/batch_expand.py \
+  --input-model /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/rwkv7-g1f-7.2b-20260414-ctx8192.pth \
+  --config /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/rwkv_scale/rys_scan_56l.json \
+  --output-dir /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/outputs/expanded_rys \
+  --manifest-out /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/outputs/expanded_rys/manifest_rys.json
+```
+
+RYS-style scan evaluation on Linux server:
+
+```bash
+python /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/tools/batch_eval.py \
+  --manifest /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/outputs/expanded_rys/manifest_rys_server.json \
   --tokenizer-path /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/tokenizer/rwkv_vocab_v20250609.txt \
   --device cuda \
   --dtype bf16 \

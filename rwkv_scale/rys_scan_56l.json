@@ -1,0 +1,98 @@
+[
+  {
+    "name": "rwkv7-g1f-12b-expand-56l-rys-s0-b3",
+    "strategy": "rys_repeat",
+    "target_layers": 56,
+    "alpha": 0.5,
+    "rys_start_layer": 0,
+    "rys_block_size": 3
+  },
+  {
+    "name": "rwkv7-g1f-12b-expand-56l-rys-s0-b5",
+    "strategy": "rys_repeat",
+    "target_layers": 56,
+    "alpha": 0.5,
+    "rys_start_layer": 0,
+    "rys_block_size": 5
+  },
+  {
+    "name": "rwkv7-g1f-12b-expand-56l-rys-s0-b7",
+    "strategy": "rys_repeat",
+    "target_layers": 56,
+    "alpha": 0.5,
+    "rys_start_layer": 0,
+    "rys_block_size": 7
+  },
+  {
+    "name": "rwkv7-g1f-12b-expand-56l-rys-s8-b3",
+    "strategy": "rys_repeat",
+    "target_layers": 56,
+    "alpha": 0.5,
+    "rys_start_layer": 8,
+    "rys_block_size": 3
+  },
+  {
+    "name": "rwkv7-g1f-12b-expand-56l-rys-s8-b5",
+    "strategy": "rys_repeat",
+    "target_layers": 56,
+    "alpha": 0.5,
+    "rys_start_layer": 8,
+    "rys_block_size": 5
+  },
+  {
+    "name": "rwkv7-g1f-12b-expand-56l-rys-s8-b7",
+    "strategy": "rys_repeat",
+    "target_layers": 56,
+    "alpha": 0.5,
+    "rys_start_layer": 8,
+    "rys_block_size": 7
+  },
+  {
+    "name": "rwkv7-g1f-12b-expand-56l-rys-s16-b3",
+    "strategy": "rys_repeat",
+    "target_layers": 56,
+    "alpha": 0.5,
+    "rys_start_layer": 16,
+    "rys_block_size": 3
+  },
+  {
+    "name": "rwkv7-g1f-12b-expand-56l-rys-s16-b5",
+    "strategy": "rys_repeat",
+    "target_layers": 56,
+    "alpha": 0.5,
+    "rys_start_layer": 16,
+    "rys_block_size": 5
+  },
+  {
+    "name": "rwkv7-g1f-12b-expand-56l-rys-s16-b7",
+    "strategy": "rys_repeat",
+    "target_layers": 56,
+    "alpha": 0.5,
+    "rys_start_layer": 16,
+    "rys_block_size": 7
+  },
+  {
+    "name": "rwkv7-g1f-12b-expand-56l-rys-s24-b3",
+    "strategy": "rys_repeat",
+    "target_layers": 56,
+    "alpha": 0.5,
+    "rys_start_layer": 24,
+    "rys_block_size": 3
+  },
+  {
+    "name": "rwkv7-g1f-12b-expand-56l-rys-s24-b5",
+    "strategy": "rys_repeat",
+    "target_layers": 56,
+    "alpha": 0.5,
+    "rys_start_layer": 24,
+    "rys_block_size": 5
+  },
+  {
+    "name": "rwkv7-g1f-12b-expand-56l-rys-s24-b7",
+    "strategy": "rys_repeat",
+    "target_layers": 56,
+    "alpha": 0.5,
+    "rys_start_layer": 24,
+    "rys_block_size": 7
+  }
+]

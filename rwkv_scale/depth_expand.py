@@ -6,6 +6,7 @@ import math
 import re
 from collections import OrderedDict
 from dataclasses import dataclass
+from dataclasses import field
 from pathlib import Path
 from typing import Any
 
@@ -37,6 +38,11 @@ class ExpansionPlan:
     insertion_ops: dict[int, str]
     scores: dict[int, float]
     notes: str
+    rys_start_layer: int | None = None
+    rys_block_size: int | None = None
+    rys_repeat_count: int | None = None
+    rys_remainder: int = 0
+    rys_prefix_copy_layers: list[int] = field(default_factory=list)
 
 
 def parse_args() -> argparse.Namespace:
@@ -54,10 +60,18 @@ def parse_args() -> argparse.Namespace:
             "tail_copy",
             "importance_copy",
             "boundary_delta_copy",
+            "rys_repeat",
         ],
     )
     parser.add_argument("--target-layers", type=int, default=56)
     parser.add_argument("--alpha", type=float, default=0.5, help="Interpolation weight for the left layer.")
+    parser.add_argument("--rys-start-layer", type=int, help="Start layer index for a contiguous RYS repeated block.")
+    parser.add_argument("--rys-block-size", type=int, help="Number of contiguous layers in the RYS repeated block.")
+    parser.add_argument(
+        "--rys-repeat-count",
+        type=int,
+        help="Optional explicit RYS repeat count. Defaults to the largest full-block repeat count that fits.",
+    )
     parser.add_argument("--metadata-out")
     parser.add_argument("--plan-only", action="store_true")
     parser.add_argument("--inspect-only", action="store_true")
@@ -176,10 +190,71 @@ def _importance_score(state_dict: OrderedDict, layer_id: int) -> float:
     return score
 
 
-def build_plan(info: LayerInfo, state_dict: OrderedDict, target_layers: int, strategy: str) -> ExpansionPlan:
+def build_plan(
+    info: LayerInfo,
+    state_dict: OrderedDict,
+    target_layers: int,
+    strategy: str,
+    rys_start_layer: int | None = None,
+    rys_block_size: int | None = None,
+    rys_repeat_count: int | None = None,
+) -> ExpansionPlan:
     insertion_count = target_layers - info.n_layer
     if insertion_count <= 0:
         raise ValueError(f"target_layers must be larger than original layer count ({info.n_layer}).")
+
+    if strategy == "rys_repeat":
+        if rys_start_layer is None or rys_block_size is None:
+            raise ValueError("rys_repeat requires --rys-start-layer and --rys-block-size.")
+        if rys_block_size <= 0:
+            raise ValueError("--rys-block-size must be positive.")
+        if rys_start_layer < 0 or rys_start_layer >= info.n_layer:
+            raise ValueError(f"--rys-start-layer must be within [0, {info.n_layer - 1}].")
+        if rys_start_layer + rys_block_size > info.n_layer:
+            raise ValueError(
+                f"RYS block ({rys_start_layer}:{rys_start_layer + rys_block_size}) exceeds the original layer range."
+            )
+
+        auto_repeat_count = insertion_count // rys_block_size
+        repeat_count = rys_repeat_count if rys_repeat_count is not None else auto_repeat_count
+        if repeat_count <= 0:
+            raise ValueError(
+                f"RYS block size {rys_block_size} is too large for insertion_count={insertion_count}; "
+                "choose a smaller block or provide a valid repeat count."
+            )
+
+        repeated_layers = repeat_count * rys_block_size
+        if repeated_layers > insertion_count:
+            raise ValueError(
+                f"RYS repeat count inserts {repeated_layers} layers, which exceeds the required {insertion_count}."
+            )
+
+        remainder = insertion_count - repeated_layers
+        block_layers = info.layer_ids[rys_start_layer : rys_start_layer + rys_block_size]
+        prefix_copy_layers = block_layers[:remainder]
+        notes = (
+            "RYS-style contiguous block repetition. "
+            f"Repeat layers {block_layers[0]}-{block_layers[-1]} for {repeat_count} full passes"
+        )
+        if remainder:
+            notes += f" and copy a {remainder}-layer prefix to exactly hit target depth."
+        else:
+            notes += "."
+
+        return ExpansionPlan(
+            strategy=strategy,
+            target_layers=target_layers,
+            insertion_count=insertion_count,
+            inserted_after_layers=[block_layers[-1]],
+            insertion_ops={},
+            scores={},
+            notes=notes,
+            rys_start_layer=rys_start_layer,
+            rys_block_size=rys_block_size,
+            rys_repeat_count=repeat_count,
+            rys_remainder=remainder,
+            rys_prefix_copy_layers=prefix_copy_layers,
+        )
 
     eligible_after_layers = info.layer_ids[1:-1]
     if insertion_count > len(eligible_after_layers):
@@ -309,6 +384,9 @@ def _interp_layer(
 
 
 def expand_depth_only(state_dict: OrderedDict, info: LayerInfo, plan: ExpansionPlan, alpha: float) -> OrderedDict:
+    if plan.strategy == "rys_repeat":
+        return expand_depth_rys(state_dict, info, plan)
+
     keys_by_layer, non_block_keys = _classify_keys(state_dict, info.n_layer)
     new_state_dict = OrderedDict()
 
@@ -333,6 +411,42 @@ def expand_depth_only(state_dict: OrderedDict, info: LayerInfo, plan: ExpansionP
 
     if new_layer_idx != plan.target_layers:
         raise RuntimeError(f"Expected {plan.target_layers} layers after expansion, got {new_layer_idx}.")
+
+    return new_state_dict
+
+
+def expand_depth_rys(state_dict: OrderedDict, info: LayerInfo, plan: ExpansionPlan) -> OrderedDict:
+    if plan.rys_start_layer is None or plan.rys_block_size is None or plan.rys_repeat_count is None:
+        raise ValueError("RYS expansion plan is missing required fields.")
+
+    keys_by_layer, non_block_keys = _classify_keys(state_dict, info.n_layer)
+    new_state_dict = OrderedDict()
+    for key in non_block_keys:
+        new_state_dict[key] = state_dict[key].clone()
+
+    block_layers = info.layer_ids[plan.rys_start_layer : plan.rys_start_layer + plan.rys_block_size]
+    prefix_layers = plan.rys_prefix_copy_layers
+    block_end = block_layers[-1]
+
+    new_layer_idx = 0
+    for layer_id in info.layer_ids:
+        _copy_layer(state_dict, keys_by_layer, layer_id, new_layer_idx, new_state_dict)
+        new_layer_idx += 1
+
+        if layer_id != block_end:
+            continue
+
+        for _ in range(plan.rys_repeat_count):
+            for source_layer in block_layers:
+                _copy_layer(state_dict, keys_by_layer, source_layer, new_layer_idx, new_state_dict)
+                new_layer_idx += 1
+
+        for source_layer in prefix_layers:
+            _copy_layer(state_dict, keys_by_layer, source_layer, new_layer_idx, new_state_dict)
+            new_layer_idx += 1
+
+    if new_layer_idx != plan.target_layers:
+        raise RuntimeError(f"Expected {plan.target_layers} layers after RYS expansion, got {new_layer_idx}.")
 
     return new_state_dict
 
@@ -378,12 +492,26 @@ def main() -> None:
     if args.inspect_only:
         return
 
-    plan = build_plan(info, state_dict, args.target_layers, args.strategy)
+    plan = build_plan(
+        info,
+        state_dict,
+        args.target_layers,
+        args.strategy,
+        rys_start_layer=args.rys_start_layer,
+        rys_block_size=args.rys_block_size,
+        rys_repeat_count=args.rys_repeat_count,
+    )
     print(f"Strategy         : {plan.strategy}")
     print(f"Strategy notes   : {plan.notes}")
     print(f"Target layers    : {plan.target_layers}")
     print(f"Insertions       : {plan.insertion_count}")
     print(f"Inserted after   : {plan.inserted_after_layers}")
+    if plan.strategy == "rys_repeat":
+        print(f"RYS block start  : {plan.rys_start_layer}")
+        print(f"RYS block size   : {plan.rys_block_size}")
+        print(f"RYS repeats      : {plan.rys_repeat_count}")
+        print(f"RYS remainder    : {plan.rys_remainder}")
+        print(f"RYS prefix layers: {plan.rys_prefix_copy_layers}")
     print(f"Estimated params : {estimated_params(info, plan.target_layers):,}")
 
     metadata = {
@@ -398,6 +526,11 @@ def main() -> None:
         "insertion_ops": plan.insertion_ops,
         "scores": plan.scores,
         "alpha": args.alpha,
+        "rys_start_layer": plan.rys_start_layer,
+        "rys_block_size": plan.rys_block_size,
+        "rys_repeat_count": plan.rys_repeat_count,
+        "rys_remainder": plan.rys_remainder,
+        "rys_prefix_copy_layers": plan.rys_prefix_copy_layers,
         "n_embd": info.n_embd,
         "vocab_size": info.vocab_size,
         "n_head": info.n_head,

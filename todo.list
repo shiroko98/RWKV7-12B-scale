@@ -85,6 +85,12 @@
   - output files match the existing eval layout under outputs/evals/
   - intended use: establish raw PPL / generation baselines before comparing pruning and expansion variants
 
+[DONE] Add RYS-style expansion scan support:
+  - depth_expand.py now supports rys_repeat for contiguous layer-block repetition
+  - batch_expand.py forwards RYS scan parameters from config files
+  - rwkv_scale/rys_scan_56l.json provides a starter scan over starts {0,8,16,24} and block sizes {3,5,7}
+  - rwkv_scale/build_rys_scan_config.py can generate larger custom scan configs
+
 [DONE] Prepare the copy-focused expansion round:
   - generated copy-focused checkpoints into outputs/expanded_copy_focus/
   - rewrote a Linux manifest for that pack

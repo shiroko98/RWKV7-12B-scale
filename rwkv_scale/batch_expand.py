@@ -84,6 +84,12 @@ def main() -> None:
             "--metadata-out",
             str(metadata_out),
         ]
+        if "rys_start_layer" in exp:
+            cmd.extend(["--rys-start-layer", str(exp["rys_start_layer"])])
+        if "rys_block_size" in exp:
+            cmd.extend(["--rys-block-size", str(exp["rys_block_size"])])
+        if "rys_repeat_count" in exp:
+            cmd.extend(["--rys-repeat-count", str(exp["rys_repeat_count"])])
         if args.plan_only:
             cmd.append("--plan-only")
 
