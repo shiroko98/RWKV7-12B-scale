@@ -90,6 +90,8 @@ def main() -> None:
             cmd.extend(["--rys-block-size", str(exp["rys_block_size"])])
         if "rys_repeat_count" in exp:
             cmd.extend(["--rys-repeat-count", str(exp["rys_repeat_count"])])
+        if "rys_blocks" in exp:
+            cmd.extend(["--rys-blocks", json.dumps(exp["rys_blocks"], ensure_ascii=False)])
         if args.plan_only:
             cmd.append("--plan-only")
 

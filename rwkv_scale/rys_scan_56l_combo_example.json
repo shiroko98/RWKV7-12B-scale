@@ -1,0 +1,38 @@
+[
+  {
+    "name": "rwkv7-g1f-12b-expand-56l-rys-combo-early-mid",
+    "strategy": "rys_repeat",
+    "target_layers": 56,
+    "alpha": 0.5,
+    "rys_blocks": [
+      {
+        "start": 0,
+        "size": 4,
+        "repeat": 3
+      },
+      {
+        "start": 12,
+        "size": 6,
+        "repeat": 2
+      }
+    ]
+  },
+  {
+    "name": "rwkv7-g1f-12b-expand-56l-rys-combo-mid-tail",
+    "strategy": "rys_repeat",
+    "target_layers": 56,
+    "alpha": 0.5,
+    "rys_blocks": [
+      {
+        "start": 8,
+        "size": 8,
+        "repeat": 2
+      },
+      {
+        "start": 20,
+        "size": 4,
+        "repeat": 2
+      }
+    ]
+  }
+]

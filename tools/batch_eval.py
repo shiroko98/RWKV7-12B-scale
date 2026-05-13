@@ -27,6 +27,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--max-new-tokens", type=int, default=512)
     parser.add_argument("--temperature", type=float, default=0.8)
     parser.add_argument("--top-p", type=float, default=0.8)
+    parser.add_argument("--probes", default="", help="Comma-separated probes to run: math,eq,json")
     parser.add_argument("--summary-out", default=str(ROOT / "outputs" / "evals" / "summary.json"))
     parser.add_argument("--dry-run", action="store_true")
     return parser.parse_args()
@@ -89,6 +90,8 @@ def main() -> None:
             str(args.temperature),
             "--top-p",
             str(args.top_p),
+            "--probes",
+            args.probes,
             "--json-out",
             str(json_out),
         ]
@@ -121,6 +124,7 @@ def main() -> None:
                     "output_model": model_path,
                     "ppl": result.get("ppl", {}),
                     "generation_metrics": result.get("generation", {}).get("metrics", {}),
+                    "probes": result.get("probes", {}),
                 }
             )
 

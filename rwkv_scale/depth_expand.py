@@ -6,6 +6,7 @@ import math
 import re
 from collections import OrderedDict
 from dataclasses import dataclass
+from dataclasses import field
 from pathlib import Path
 from typing import Any
 
@@ -40,6 +41,7 @@ class ExpansionPlan:
     rys_start_layer: int | None = None
     rys_block_size: int | None = None
     rys_repeat_count: int | None = None
+    rys_blocks: list[dict[str, int]] = field(default_factory=list)
 
 
 def parse_args() -> argparse.Namespace:
@@ -68,6 +70,10 @@ def parse_args() -> argparse.Namespace:
         "--rys-repeat-count",
         type=int,
         help="Optional explicit number of full contiguous-block duplications for strict RYS expansion.",
+    )
+    parser.add_argument(
+        "--rys-blocks",
+        help='Optional JSON list of strict RYS blocks, e.g. \'[{"start":0,"size":3,"repeat":8}]\'',
     )
     parser.add_argument("--metadata-out")
     parser.add_argument("--plan-only", action="store_true")
@@ -187,6 +193,26 @@ def _importance_score(state_dict: OrderedDict, layer_id: int) -> float:
     return score
 
 
+def _parse_rys_blocks_arg(text: str | None) -> list[dict[str, int]]:
+    if not text:
+        return []
+    blocks = json.loads(text)
+    if not isinstance(blocks, list):
+        raise ValueError("--rys-blocks must be a JSON list.")
+    parsed: list[dict[str, int]] = []
+    for idx, item in enumerate(blocks):
+        if not isinstance(item, dict):
+            raise ValueError(f"RYS block #{idx} must be a JSON object.")
+        try:
+            start = int(item["start"])
+            size = int(item["size"])
+            repeat = int(item.get("repeat", 1))
+        except KeyError as exc:
+            raise ValueError(f"RYS block #{idx} is missing key: {exc}") from exc
+        parsed.append({"start": start, "size": size, "repeat": repeat})
+    return parsed
+
+
 def build_plan(
     info: LayerInfo,
     state_dict: OrderedDict,
@@ -195,58 +221,72 @@ def build_plan(
     rys_start_layer: int | None = None,
     rys_block_size: int | None = None,
     rys_repeat_count: int | None = None,
+    rys_blocks: list[dict[str, int]] | None = None,
 ) -> ExpansionPlan:
     insertion_count = target_layers - info.n_layer
     if insertion_count <= 0:
         raise ValueError(f"target_layers must be larger than original layer count ({info.n_layer}).")
 
     if strategy == "rys_repeat":
-        if rys_start_layer is None or rys_block_size is None:
-            raise ValueError("rys_repeat requires --rys-start-layer and --rys-block-size.")
-        if rys_block_size <= 0:
-            raise ValueError("--rys-block-size must be positive.")
-        if rys_start_layer < 0 or rys_start_layer >= info.n_layer:
-            raise ValueError(f"--rys-start-layer must be within [0, {info.n_layer - 1}].")
-        if rys_start_layer + rys_block_size > info.n_layer:
-            raise ValueError(
-                f"RYS block ({rys_start_layer}:{rys_start_layer + rys_block_size}) exceeds the original layer range."
-            )
+        normalized_blocks: list[dict[str, int]] = []
+        if rys_blocks:
+            normalized_blocks = [dict(block) for block in rys_blocks]
+        else:
+            if rys_start_layer is None or rys_block_size is None:
+                raise ValueError("rys_repeat requires either --rys-blocks or --rys-start-layer/--rys-block-size.")
+            if rys_block_size <= 0:
+                raise ValueError("--rys-block-size must be positive.")
+            if insertion_count % rys_block_size != 0 and rys_repeat_count is None:
+                raise ValueError(
+                    "Strict RYS requires full contiguous-block duplication only. "
+                    f"insertion_count={insertion_count} is not divisible by rys_block_size={rys_block_size}."
+                )
+            auto_repeat_count = insertion_count // rys_block_size
+            repeat_count = rys_repeat_count if rys_repeat_count is not None else auto_repeat_count
+            normalized_blocks = [{"start": rys_start_layer, "size": rys_block_size, "repeat": repeat_count}]
 
-        if insertion_count % rys_block_size != 0 and rys_repeat_count is None:
-            raise ValueError(
-                "Strict RYS requires full contiguous-block duplication only. "
-                f"insertion_count={insertion_count} is not divisible by rys_block_size={rys_block_size}."
-            )
+        total_inserted = 0
+        block_descriptions: list[str] = []
+        inserted_after_layers: list[int] = []
+        for idx, block in enumerate(normalized_blocks):
+            start = int(block["start"])
+            size = int(block["size"])
+            repeat = int(block.get("repeat", 1))
+            if size <= 0:
+                raise ValueError(f"RYS block #{idx} size must be positive.")
+            if repeat <= 0:
+                raise ValueError(f"RYS block #{idx} repeat must be positive.")
+            if start < 0 or start >= info.n_layer:
+                raise ValueError(f"RYS block #{idx} start must be within [0, {info.n_layer - 1}].")
+            if start + size > info.n_layer:
+                raise ValueError(f"RYS block #{idx} ({start}:{start + size}) exceeds the original layer range.")
+            total_inserted += size * repeat
+            inserted_after_layers.append(info.layer_ids[start + size - 1])
+            block_descriptions.append(f"{start}-{start + size - 1} x{repeat}")
+            block["start"] = start
+            block["size"] = size
+            block["repeat"] = repeat
 
-        auto_repeat_count = insertion_count // rys_block_size
-        repeat_count = rys_repeat_count if rys_repeat_count is not None else auto_repeat_count
-        if repeat_count <= 0:
-            raise ValueError("Strict RYS repeat count must be positive.")
-
-        repeated_layers = repeat_count * rys_block_size
-        if repeated_layers != insertion_count:
+        if total_inserted != insertion_count:
             raise ValueError(
                 "Strict RYS does not allow partial-block padding. "
-                f"repeat_count * rys_block_size = {repeated_layers}, expected insertion_count = {insertion_count}."
+                f"Total repeated layers = {total_inserted}, expected insertion_count = {insertion_count}."
             )
 
-        block_layers = info.layer_ids[rys_start_layer : rys_start_layer + rys_block_size]
-        notes = (
-            "Strict RYS contiguous block duplication. "
-            f"Repeat layers {block_layers[0]}-{block_layers[-1]} for {repeat_count} full passes."
-        )
+        notes = "Strict RYS contiguous block duplication. Blocks: " + "; ".join(block_descriptions) + "."
 
         return ExpansionPlan(
             strategy=strategy,
             target_layers=target_layers,
             insertion_count=insertion_count,
-            inserted_after_layers=[block_layers[-1]],
+            inserted_after_layers=inserted_after_layers,
             insertion_ops={},
             scores={},
             notes=notes,
-            rys_start_layer=rys_start_layer,
-            rys_block_size=rys_block_size,
-            rys_repeat_count=repeat_count,
+            rys_start_layer=normalized_blocks[0]["start"] if len(normalized_blocks) == 1 else None,
+            rys_block_size=normalized_blocks[0]["size"] if len(normalized_blocks) == 1 else None,
+            rys_repeat_count=normalized_blocks[0]["repeat"] if len(normalized_blocks) == 1 else None,
+            rys_blocks=normalized_blocks,
         )
 
     eligible_after_layers = info.layer_ids[1:-1]
@@ -409,7 +449,9 @@ def expand_depth_only(state_dict: OrderedDict, info: LayerInfo, plan: ExpansionP
 
 
 def expand_depth_rys(state_dict: OrderedDict, info: LayerInfo, plan: ExpansionPlan) -> OrderedDict:
-    if plan.rys_start_layer is None or plan.rys_block_size is None or plan.rys_repeat_count is None:
+    if not plan.rys_blocks and (
+        plan.rys_start_layer is None or plan.rys_block_size is None or plan.rys_repeat_count is None
+    ):
         raise ValueError("RYS expansion plan is missing required fields.")
 
     keys_by_layer, non_block_keys = _classify_keys(state_dict, info.n_layer)
@@ -417,21 +459,39 @@ def expand_depth_rys(state_dict: OrderedDict, info: LayerInfo, plan: ExpansionPl
     for key in non_block_keys:
         new_state_dict[key] = state_dict[key].clone()
 
-    block_layers = info.layer_ids[plan.rys_start_layer : plan.rys_start_layer + plan.rys_block_size]
-    block_end = block_layers[-1]
+    if plan.rys_blocks:
+        rys_blocks = plan.rys_blocks
+    else:
+        rys_blocks = [
+            {
+                "start": plan.rys_start_layer,
+                "size": plan.rys_block_size,
+                "repeat": plan.rys_repeat_count,
+            }
+        ]
+
+    block_map: dict[int, list[dict[str, int]]] = {}
+    for block in rys_blocks:
+        start = int(block["start"])
+        size = int(block["size"])
+        repeat = int(block["repeat"])
+        block_end = info.layer_ids[start + size - 1]
+        block_map.setdefault(block_end, []).append({"start": start, "size": size, "repeat": repeat})
 
     new_layer_idx = 0
     for layer_id in info.layer_ids:
         _copy_layer(state_dict, keys_by_layer, layer_id, new_layer_idx, new_state_dict)
         new_layer_idx += 1
 
-        if layer_id != block_end:
+        if layer_id not in block_map:
             continue
 
-        for _ in range(plan.rys_repeat_count):
-            for source_layer in block_layers:
-                _copy_layer(state_dict, keys_by_layer, source_layer, new_layer_idx, new_state_dict)
-                new_layer_idx += 1
+        for block in block_map[layer_id]:
+            block_layers = info.layer_ids[block["start"] : block["start"] + block["size"]]
+            for _ in range(block["repeat"]):
+                for source_layer in block_layers:
+                    _copy_layer(state_dict, keys_by_layer, source_layer, new_layer_idx, new_state_dict)
+                    new_layer_idx += 1
 
     if new_layer_idx != plan.target_layers:
         raise RuntimeError(f"Expected {plan.target_layers} layers after RYS expansion, got {new_layer_idx}.")
@@ -468,6 +528,7 @@ def main() -> None:
     args = parse_args()
     raw_obj, state_dict, wrapped = load_checkpoint(args.input_model)
     info = inspect_checkpoint(state_dict)
+    parsed_rys_blocks = _parse_rys_blocks_arg(args.rys_blocks)
 
     print(f"Input model      : {args.input_model}")
     print(f"Layers           : {info.n_layer} ({info.layer_ids[0]}..{info.layer_ids[-1]})")
@@ -488,6 +549,7 @@ def main() -> None:
         rys_start_layer=args.rys_start_layer,
         rys_block_size=args.rys_block_size,
         rys_repeat_count=args.rys_repeat_count,
+        rys_blocks=parsed_rys_blocks,
     )
     print(f"Strategy         : {plan.strategy}")
     print(f"Strategy notes   : {plan.notes}")
@@ -495,9 +557,12 @@ def main() -> None:
     print(f"Insertions       : {plan.insertion_count}")
     print(f"Inserted after   : {plan.inserted_after_layers}")
     if plan.strategy == "rys_repeat":
-        print(f"RYS block start  : {plan.rys_start_layer}")
-        print(f"RYS block size   : {plan.rys_block_size}")
-        print(f"RYS repeats      : {plan.rys_repeat_count}")
+        if plan.rys_blocks:
+            print(f"RYS blocks       : {plan.rys_blocks}")
+        else:
+            print(f"RYS block start  : {plan.rys_start_layer}")
+            print(f"RYS block size   : {plan.rys_block_size}")
+            print(f"RYS repeats      : {plan.rys_repeat_count}")
     print(f"Estimated params : {estimated_params(info, plan.target_layers):,}")
 
     metadata = {
@@ -515,6 +580,7 @@ def main() -> None:
         "rys_start_layer": plan.rys_start_layer,
         "rys_block_size": plan.rys_block_size,
         "rys_repeat_count": plan.rys_repeat_count,
+        "rys_blocks": plan.rys_blocks,
         "n_embd": info.n_embd,
         "vocab_size": info.vocab_size,
         "n_head": info.n_head,

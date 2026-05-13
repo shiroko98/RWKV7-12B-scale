@@ -13,6 +13,9 @@ if str(ROOT) not in sys.path:
 
 import torch
 
+from evals.rwkv_probes import BUILTIN_PROBES
+from evals.rwkv_probes import ProbeSample
+from evals.rwkv_probes import get_digit_score_tokens
 from evals.rwkv_runtime import RWKVRNN, RuntimeConfig
 from evals.rwkv_tokenizer import RWKVTokenizer
 
@@ -32,6 +35,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--max-new-tokens", type=int, default=256)
     parser.add_argument("--temperature", type=float, default=0.8)
     parser.add_argument("--top-p", type=float, default=0.8)
+    parser.add_argument("--probes", default="", help="Comma-separated probes to run: math,eq,json")
     parser.add_argument("--json-out", help="Optional path to save evaluation results as JSON.")
     return parser.parse_args()
 
@@ -146,6 +150,104 @@ def repetition_metrics(text: str, tokens: list[int]) -> dict[str, float | int | 
     }
 
 
+def _logits_for_prompt(model: RWKVRNN, tokenizer: RWKVTokenizer, prompt: str) -> torch.Tensor:
+    state = model.zero_state()
+    logits = None
+    for token in tokenizer.encode(prompt):
+        logits, state = model.forward(token, state)
+    if logits is None:
+        logits, state = model.forward(0, state)
+    return logits
+
+
+def _score_probe_logits(
+    logits: torch.Tensor,
+    score_token_ids: list[int],
+    score_values: list[float],
+    correct_answer: int | None,
+) -> dict[str, float | int | list[float] | bool | None]:
+    restricted_logits = logits[score_token_ids].float()
+    probs = torch.softmax(restricted_logits, dim=0)
+    expected = float(sum(value * prob.item() for value, prob in zip(score_values, probs)))
+    variance = float(sum(((value - expected) ** 2) * prob.item() for value, prob in zip(score_values, probs)))
+    argmax_idx = int(torch.argmax(restricted_logits).item())
+    predicted_digit = int(score_values[argmax_idx])
+
+    log_odds = None
+    is_correct = None
+    if correct_answer is not None:
+        correct_idx = None
+        for idx, value in enumerate(score_values):
+            if int(value) == correct_answer:
+                correct_idx = idx
+                break
+        if correct_idx is not None:
+            log_softmax = torch.log_softmax(restricted_logits, dim=0)
+            log_p_correct = float(log_softmax[correct_idx].item())
+            other_logits = torch.cat([restricted_logits[:correct_idx], restricted_logits[correct_idx + 1 :]])
+            if len(other_logits) > 0:
+                log_p_other = float(torch.logsumexp(other_logits, dim=0).item())
+                log_odds = log_p_correct - log_p_other
+            else:
+                log_odds = float("inf")
+            is_correct = predicted_digit == correct_answer
+
+    return {
+        "expected_score": expected,
+        "uncertainty": variance,
+        "predicted_digit": predicted_digit,
+        "probabilities": [float(prob.item()) for prob in probs],
+        "raw_logits": [float(x.item()) for x in restricted_logits],
+        "log_odds": log_odds,
+        "is_correct": is_correct,
+    }
+
+
+def run_probe(
+    model: RWKVRNN,
+    tokenizer: RWKVTokenizer,
+    probe_name: str,
+    samples: list[ProbeSample],
+) -> dict[str, object]:
+    score_token_ids, score_values = get_digit_score_tokens(tokenizer)
+    per_sample: list[dict[str, object]] = []
+    expected_scores: list[float] = []
+    uncertainties: list[float] = []
+    log_odds_values: list[float] = []
+    correctness: list[bool] = []
+
+    for sample in samples:
+        logits = _logits_for_prompt(model, tokenizer, sample.prompt)
+        scored = _score_probe_logits(logits, score_token_ids, score_values, sample.correct_answer)
+        per_sample.append(
+            {
+                "prompt": sample.prompt,
+                "category": sample.category,
+                "target_score": sample.expected_score,
+                **scored,
+            }
+        )
+        expected_scores.append(float(scored["expected_score"]))
+        uncertainties.append(float(scored["uncertainty"]))
+        if scored["log_odds"] is not None:
+            log_odds_values.append(float(scored["log_odds"]))
+        if scored["is_correct"] is not None:
+            correctness.append(bool(scored["is_correct"]))
+
+    result: dict[str, object] = {
+        "probe": probe_name,
+        "sample_count": len(samples),
+        "mean_score": sum(expected_scores) / len(expected_scores) if expected_scores else 0.0,
+        "mean_uncertainty": sum(uncertainties) / len(uncertainties) if uncertainties else 0.0,
+        "samples": per_sample,
+    }
+    if log_odds_values:
+        result["mean_log_odds"] = sum(log_odds_values) / len(log_odds_values)
+    if correctness:
+        result["accuracy"] = sum(1.0 for flag in correctness if flag) / len(correctness)
+    return result
+
+
 def generate_text(
     model: RWKVRNN,
     tokenizer: RWKVTokenizer,
@@ -207,6 +309,24 @@ def main() -> None:
             print(f"  {key}: {value}")
         print("\nGenerated text:\n")
         print(generation["text"])
+
+    probe_names = [item.strip() for item in args.probes.split(",") if item.strip()]
+    if probe_names:
+        probe_results: dict[str, object] = {}
+        for probe_name in probe_names:
+            if probe_name not in BUILTIN_PROBES:
+                raise ValueError(f"Unsupported probe: {probe_name}")
+            probe_result = run_probe(model, tokenizer, probe_name, BUILTIN_PROBES[probe_name])
+            probe_results[probe_name] = probe_result
+            print(f"\nProbe {probe_name}:")
+            print(f"  sample_count: {probe_result['sample_count']}")
+            print(f"  mean_score  : {probe_result['mean_score']:.4f}")
+            print(f"  mean_uncert.: {probe_result['mean_uncertainty']:.4f}")
+            if "mean_log_odds" in probe_result:
+                print(f"  mean_log_odds: {probe_result['mean_log_odds']:.4f}")
+            if "accuracy" in probe_result:
+                print(f"  accuracy    : {probe_result['accuracy']:.4f}")
+        result["probes"] = probe_results
 
     if args.json_out:
         output_path = Path(args.json_out)

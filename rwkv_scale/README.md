@@ -148,12 +148,21 @@ The interpolation and hybrid baselines are still available, but only through an 
 To test Repeat-Your-Self style contiguous block repetition on the 7.2B to 56-layer expansion task, a dedicated scan config is included:
 
 - `rwkv_scale/rys_scan_56l.json`
+- `rwkv_scale/rys_scan_56l_full.json`
+- `rwkv_scale/rys_scan_56l_half_min3.json`
+- `rwkv_scale/rys_scan_56l_combo_example.json`
 
 This config currently scans:
 
 - start layers: `0`, `8`, `16`, `24`
 - candidate block sizes: `3`, `4`, `6`, `8`, `12`, `24`
 - after filtering, only start/block pairs fully inside the 32-layer source model are kept
+
+Additional configs:
+
+- `rys_scan_56l_full.json`: all legal strict-RYS single-block configs
+- `rys_scan_56l_half_min3.json`: a reduced scan with `block_size >= 3` and `block_size <= 16`
+- `rys_scan_56l_combo_example.json`: examples of multi-block strict-RYS combinations
 
 The `rys_repeat` strategy is now strict RYS:
 
@@ -183,6 +192,25 @@ python rwkv_scale/build_rys_scan_config.py ^
   --block-sizes 3,4,6,8,12,24
 ```
 
+Build a strict-RYS full-scan config over every legal start/block pair:
+
+```bash
+python rwkv_scale/build_rys_full_scan_config.py ^
+  --output D:\codes\RWKV7-12B-scale\rwkv_scale\rys_scan_56l_full.json ^
+  --original-layers 32 ^
+  --target-layers 56
+```
+
+If you want a more conservative search closer to the common RYS intuition, you can cap the block size to half depth:
+
+```bash
+python rwkv_scale/build_rys_full_scan_config.py ^
+  --output D:\codes\RWKV7-12B-scale\rwkv_scale\rys_scan_56l_half.json ^
+  --original-layers 32 ^
+  --target-layers 56 ^
+  --limit-half
+```
+
 Rewrite the RYS manifest for Linux server paths:
 
 ```bash
@@ -190,6 +218,37 @@ python rwkv_scale/make_server_manifest.py ^
   --input-manifest D:\codes\RWKV7-12B-scale\outputs\expanded_rys\manifest_rys.json ^
   --server-root /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale ^
   --output-manifest D:\codes\RWKV7-12B-scale\outputs\expanded_rys\manifest_rys_server.json
+```
+
+Run the full scan on server in a storage-friendly way:
+
+```bash
+python /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/tools/run_rys_scan.py \
+  --input-model /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/rwkv7-g1f-7.2b-20260414-ctx8192.pth \
+  --config /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/rwkv_scale/rys_scan_56l_full.json \
+  --work-dir /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/outputs/expanded_rys_tmp \
+  --tokenizer-path /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/tokenizer/rwkv_vocab_v20250609.txt \
+  --summary-out /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/outputs/evals/rys_full_scan_summary.json \
+  --device cuda \
+  --dtype bf16 \
+  --task both \
+  --dataset wikitext2 \
+  --token-budget 8192 \
+  --max-docs 128 \
+  --max-new-tokens 1200
+```
+
+This server flow does:
+
+- build one expanded checkpoint
+- run evaluation
+- append the result to summary JSON
+- delete the generated checkpoint and metadata by default
+
+To include the lightweight RYS-style probes in the same run, add:
+
+```bash
+  --probes math,eq,json
 ```
 
 ## Batch generation

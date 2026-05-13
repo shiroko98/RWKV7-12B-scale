@@ -274,6 +274,25 @@ python rwkv_scale/make_server_manifest.py ^
   --output-manifest D:\codes\RWKV7-12B-scale\outputs\expanded_rys\manifest_rys_server.json
 ```
 
+For larger RYS scans, use the one-by-one server runner instead of keeping all generated checkpoints:
+
+```bash
+python /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/tools/run_rys_scan.py \
+  --input-model /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/rwkv7-g1f-7.2b-20260414-ctx8192.pth \
+  --config /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/rwkv_scale/rys_scan_56l_full.json \
+  --work-dir /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/outputs/expanded_rys_tmp \
+  --tokenizer-path /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/tokenizer/rwkv_vocab_v20250609.txt \
+  --summary-out /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/outputs/evals/rys_full_scan_summary.json \
+  --device cuda \
+  --dtype bf16 \
+  --task both \
+  --dataset wikitext2 \
+  --probes math,eq,json \
+  --token-budget 8192 \
+  --max-docs 128 \
+  --max-new-tokens 1200
+```
+
 Evaluate the expanded models with the same pipeline:
 
 ```bash
