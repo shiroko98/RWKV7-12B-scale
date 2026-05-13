@@ -163,6 +163,7 @@ Additional configs:
 - `rys_scan_56l_full.json`: all legal strict-RYS single-block configs
 - `rys_scan_56l_half_min3.json`: a reduced scan with `block_size >= 3` and `block_size <= 16`
 - `rys_scan_56l_combo_example.json`: examples of multi-block strict-RYS combinations
+- `rys_scan_repeat1_b2_b9.json`: single-block scan with `repeat_count = 1`, `block_size = 2..9`, and `target_layers = 32 + block_size`
 
 The `rys_repeat` strategy is now strict RYS:
 
@@ -225,6 +226,26 @@ python rwkv_scale/build_rys_full_scan_config.py ^
   --target-layers 56
 ```
 
+Build a variable-target single-repeat scan where each experiment duplicates exactly one block once:
+
+```bash
+python rwkv_scale/build_rys_full_scan_config.py ^
+  --output D:\codes\RWKV7-12B-scale\rwkv_scale\rys_scan_repeat1_b2_b9.json ^
+  --original-layers 32 ^
+  --min-block-size 2 ^
+  --max-block-size 9 ^
+  --fixed-repeat-count 1 ^
+  --name-prefix rwkv7-g1f-expand-repeat1-b2to9
+```
+
+This config keeps:
+
+- single-block only
+- `repeat_count = 1`
+- `block_size = 2..9`
+- `target_layers = 32 + block_size`
+- no `layer 0` starts by default
+
 If you want a more conservative search closer to the common RYS intuition, you can cap the block size to half depth:
 
 ```bash
@@ -258,6 +279,49 @@ python /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/tools/run_rys_scan.py \
   --dtype bf16 \
   --task both \
   --dataset wikitext2 \
+  --token-budget 8192 \
+  --max-docs 128 \
+  --max-new-tokens 200
+```
+
+Run the `repeat_count = 1`, `block_size = 2..9` scan on server:
+
+```bash
+python /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/tools/run_rys_scan.py \
+  --input-model /mnt/data/Models/RWKV-7/rwkv7-g1f-7.2b-20260414-ctx8192.pth \
+  --config /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/rwkv_scale/rys_scan_repeat1_b2_b9.json \
+  --work-dir /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/outputs/expanded_rys_repeat1_tmp \
+  --tokenizer-path /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/tokenizer/rwkv_vocab_v20250609.txt \
+  --summary-out /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/outputs/evals/rys_repeat1_b2_b9_summary.json \
+  --markdown-out /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/outputs/evals/rys_repeat1_b2_b9_summary.md \
+  --log-dir /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/outputs/evals/rys_repeat1_b2_b9_logs \
+  --device cuda \
+  --dtype bf16 \
+  --task both \
+  --dataset wikitext2 \
+  --probes math,eq,json \
+  --token-budget 8192 \
+  --max-docs 128 \
+  --max-new-tokens 200
+```
+
+Run the same scan on 8 GPUs:
+
+```bash
+python /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/tools/run_rys_scan_multigpu.py \
+  --input-model /mnt/data/Models/RWKV-7/rwkv7-g1f-7.2b-20260414-ctx8192.pth \
+  --config /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/rwkv_scale/rys_scan_repeat1_b2_b9.json \
+  --work-dir /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/outputs/expanded_rys_repeat1_tmp \
+  --tokenizer-path /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/tokenizer/rwkv_vocab_v20250609.txt \
+  --summary-out /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/outputs/evals/rys_repeat1_b2_b9_summary.json \
+  --markdown-out /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/outputs/evals/rys_repeat1_b2_b9_summary.md \
+  --log-dir /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/outputs/evals/rys_repeat1_b2_b9_logs \
+  --gpu-ids 0,1,2,3,4,5,6,7 \
+  --device cuda \
+  --dtype bf16 \
+  --task both \
+  --dataset wikitext2 \
+  --probes math,eq,json \
   --token-budget 8192 \
   --max-docs 128 \
   --max-new-tokens 200

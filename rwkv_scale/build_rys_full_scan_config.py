@@ -10,6 +10,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--output", required=True)
     parser.add_argument("--original-layers", type=int, default=32)
     parser.add_argument("--target-layers", type=int, default=56)
+    parser.add_argument(
+        "--fixed-repeat-count",
+        type=int,
+        help="If set, build a dynamic-target scan where target_layers = original_layers + block_size * fixed_repeat_count.",
+    )
     parser.add_argument("--max-block-size", type=int)
     parser.add_argument("--min-block-size", type=int, default=1)
     parser.add_argument("--max-configs", type=int)
@@ -25,9 +30,14 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
-    insertion_count = args.target_layers - args.original_layers
-    if insertion_count <= 0:
-        raise ValueError("target-layers must be larger than original-layers.")
+    if args.fixed_repeat_count is not None:
+        if args.fixed_repeat_count <= 0:
+            raise ValueError("--fixed-repeat-count must be positive.")
+        insertion_count = None
+    else:
+        insertion_count = args.target_layers - args.original_layers
+        if insertion_count <= 0:
+            raise ValueError("target-layers must be larger than original-layers.")
 
     max_block_size = args.max_block_size or args.original_layers
     if args.limit_half:
@@ -35,16 +45,22 @@ def main() -> None:
 
     config: list[dict] = []
     for block_size in range(args.min_block_size, max_block_size + 1):
-        if insertion_count % block_size != 0:
-            continue
-        repeat_count = insertion_count // block_size
+        if args.fixed_repeat_count is not None:
+            repeat_count = args.fixed_repeat_count
+            target_layers = args.original_layers + block_size * repeat_count
+        else:
+            assert insertion_count is not None
+            if insertion_count % block_size != 0:
+                continue
+            repeat_count = insertion_count // block_size
+            target_layers = args.target_layers
         min_start = 0 if args.include_layer0 else 1
         for start in range(min_start, args.original_layers - block_size + 1):
             config.append(
                 {
-                    "name": f"{args.name_prefix}-rys-s{start}-b{block_size}",
+                    "name": f"{args.name_prefix}-rys-s{start}-b{block_size}-r{repeat_count}",
                     "strategy": "rys_repeat",
-                    "target_layers": args.target_layers,
+                    "target_layers": target_layers,
                     "alpha": 0.5,
                     "rys_start_layer": start,
                     "rys_block_size": block_size,
