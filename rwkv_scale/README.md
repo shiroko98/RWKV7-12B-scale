@@ -154,7 +154,7 @@ To test Repeat-Your-Self style contiguous block repetition on the 7.2B to 56-lay
 
 This config currently scans:
 
-- start layers: `0`, `8`, `16`, `24`
+- start layers: `8`, `16`, `24`
 - candidate block sizes: `3`, `4`, `6`, `8`, `12`, `24`
 - after filtering, only start/block pairs fully inside the 32-layer source model are kept
 
@@ -170,6 +170,28 @@ The `rys_repeat` strategy is now strict RYS:
 - every duplicate pass must be a full block
 - it does not allow prefix padding or partial-block fill
 - for the current `32 -> 56` setup, the inserted depth is `24`, so valid block sizes must divide `24`
+- by default, it does not allow blocks that start at `layer 0`, because RWKV block 0 has special `ln0` / `v_first` behavior and dormant `att.v*` parameters that are not semantically equivalent to later layers
+
+Why `layer 0` is excluded by default:
+
+- RWKV `block 0` is not a normal interior block
+- `ln0` exists only on `block 0` and is fused into embedding normalization at inference time
+- `v_first` is initialized from `layer_id == 0`, so copying layer 0 to a later position does not reproduce "run block 0 twice"
+- in the 7.2B checkpoint, `blocks.0.att.v1` is all zeros and `blocks.0.att.v0` is a constant tensor, which is fine when `layer 0` ignores them, but unsafe once the copied block runs as a later layer and starts using them
+
+If you really want to test this pathology case anyway, you can still opt in explicitly:
+
+```bash
+python rwkv_scale/depth_expand.py ^
+  --input-model D:\codes\RWKV7-12B-scale\rwkv7-g1f-7.2b-20260414-ctx8192.pth ^
+  --output-model D:\codes\RWKV7-12B-scale\outputs\tmp\rys-layer0-test.pth ^
+  --strategy rys_repeat ^
+  --target-layers 33 ^
+  --rys-start-layer 0 ^
+  --rys-block-size 1 ^
+  --rys-repeat-count 1 ^
+  --allow-layer0-rys
+```
 
 Generate the default RYS scan pack:
 
@@ -191,6 +213,8 @@ python rwkv_scale/build_rys_scan_config.py ^
   --starts 0,4,8,12,16,20,24,28 ^
   --block-sizes 3,4,6,8,12,24
 ```
+
+The config builders now skip `start=0` by default. Add `--include-layer0` only if you intentionally want to study that edge case.
 
 Build a strict-RYS full-scan config over every legal start/block pair:
 

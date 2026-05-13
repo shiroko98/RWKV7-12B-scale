@@ -13,6 +13,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--starts", default="0,4,8,12,16,20,24,28")
     parser.add_argument("--block-sizes", default="3,4,6,8,12,24")
     parser.add_argument("--name-prefix", default="rwkv7-g1f-12b-expand-56l")
+    parser.add_argument(
+        "--include-layer0",
+        action="store_true",
+        help="Include start=0 candidates. Disabled by default because RWKV block 0 is structurally special.",
+    )
     return parser.parse_args()
 
 
@@ -36,6 +41,8 @@ def main() -> None:
 
     config: list[dict] = []
     for start in starts:
+        if start == 0 and not args.include_layer0:
+            continue
         for block_size in block_sizes:
             if start < 0 or start >= args.original_layers:
                 continue

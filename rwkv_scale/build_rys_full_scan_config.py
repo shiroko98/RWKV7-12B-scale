@@ -15,6 +15,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--max-configs", type=int)
     parser.add_argument("--name-prefix", default="rwkv7-g1f-12b-expand-56l")
     parser.add_argument("--limit-half", action="store_true", help="Only scan block sizes up to original_layers // 2.")
+    parser.add_argument(
+        "--include-layer0",
+        action="store_true",
+        help="Include RYS blocks that start at layer 0. Disabled by default because RWKV block 0 is structurally special.",
+    )
     return parser.parse_args()
 
 
@@ -33,7 +38,8 @@ def main() -> None:
         if insertion_count % block_size != 0:
             continue
         repeat_count = insertion_count // block_size
-        for start in range(0, args.original_layers - block_size + 1):
+        min_start = 0 if args.include_layer0 else 1
+        for start in range(min_start, args.original_layers - block_size + 1):
             config.append(
                 {
                     "name": f"{args.name_prefix}-rys-s{start}-b{block_size}",

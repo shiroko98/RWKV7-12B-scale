@@ -75,6 +75,11 @@ def parse_args() -> argparse.Namespace:
         "--rys-blocks",
         help='Optional JSON list of strict RYS blocks, e.g. \'[{"start":0,"size":3,"repeat":8}]\'',
     )
+    parser.add_argument(
+        "--allow-layer0-rys",
+        action="store_true",
+        help="Explicitly allow RYS blocks that start at layer 0. Disabled by default because RWKV block 0 has special semantics.",
+    )
     parser.add_argument("--metadata-out")
     parser.add_argument("--plan-only", action="store_true")
     parser.add_argument("--inspect-only", action="store_true")
@@ -222,6 +227,7 @@ def build_plan(
     rys_block_size: int | None = None,
     rys_repeat_count: int | None = None,
     rys_blocks: list[dict[str, int]] | None = None,
+    allow_layer0_rys: bool = False,
 ) -> ExpansionPlan:
     insertion_count = target_layers - info.n_layer
     if insertion_count <= 0:
@@ -258,6 +264,12 @@ def build_plan(
                 raise ValueError(f"RYS block #{idx} repeat must be positive.")
             if start < 0 or start >= info.n_layer:
                 raise ValueError(f"RYS block #{idx} start must be within [0, {info.n_layer - 1}].")
+            if start == 0 and not allow_layer0_rys:
+                raise ValueError(
+                    "RYS block #{} starts at layer 0, but RWKV block 0 has special ln0 / v_first semantics and "
+                    "dormant att.v* parameters that become active when copied to later layers. "
+                    "Use --allow-layer0-rys only for explicit pathology experiments.".format(idx)
+                )
             if start + size > info.n_layer:
                 raise ValueError(f"RYS block #{idx} ({start}:{start + size}) exceeds the original layer range.")
             total_inserted += size * repeat
@@ -550,6 +562,7 @@ def main() -> None:
         rys_block_size=args.rys_block_size,
         rys_repeat_count=args.rys_repeat_count,
         rys_blocks=parsed_rys_blocks,
+        allow_layer0_rys=args.allow_layer0_rys,
     )
     print(f"Strategy         : {plan.strategy}")
     print(f"Strategy notes   : {plan.notes}")
@@ -581,6 +594,7 @@ def main() -> None:
         "rys_block_size": plan.rys_block_size,
         "rys_repeat_count": plan.rys_repeat_count,
         "rys_blocks": plan.rys_blocks,
+        "allow_layer0_rys": args.allow_layer0_rys,
         "n_embd": info.n_embd,
         "vocab_size": info.vocab_size,
         "n_head": info.n_head,
