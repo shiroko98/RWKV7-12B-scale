@@ -9,6 +9,77 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def atomic_write_json(path: Path, data: object) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp_path = path.with_suffix(path.suffix + ".tmp")
+    tmp_path.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+    tmp_path.replace(path)
+
+
+def build_markdown_summary(summary: list[dict]) -> str:
+    lines: list[str] = ["# RYS Scan Summary", ""]
+    if not summary:
+        lines.append("No results yet.")
+        return "\n".join(lines) + "\n"
+
+    completed = [item for item in summary if "error" not in item]
+    failed = [item for item in summary if "error" in item]
+    lines.append(f"- Total records: {len(summary)}")
+    lines.append(f"- Completed: {len(completed)}")
+    lines.append(f"- Failed: {len(failed)}")
+    lines.append("")
+
+    if completed:
+        ranked = sorted(
+            completed,
+            key=lambda item: float(item.get("ppl", {}).get("ppl", float("inf"))),
+        )
+        lines.append("## By PPL")
+        lines.append("")
+        lines.append("| Rank | Name | Block | Repeat | PPL | Math | EQ | JSON | Loop | Unknown |")
+        lines.append("| --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |")
+        for idx, item in enumerate(ranked, start=1):
+            ppl = item.get("ppl", {}).get("ppl", "")
+            probes = item.get("probes", {})
+            math_score = probes.get("math", {}).get("mean_score", "")
+            eq_score = probes.get("eq", {}).get("mean_score", "")
+            json_score = probes.get("json", {}).get("mean_score", "")
+            loop = item.get("generation_metrics", {}).get("max_loop_repeats", "")
+            unknown = item.get("generation_metrics", {}).get("unknown_token_count", "")
+            rys_blocks = item.get("rys_blocks") or []
+            if rys_blocks:
+                block_desc = ",".join(
+                    f"{block.get('start')}-{block.get('start', 0) + block.get('size', 0) - 1}" for block in rys_blocks
+                )
+                repeat_desc = ",".join(str(block.get("repeat", "")) for block in rys_blocks)
+            else:
+                start = item.get("rys_start_layer")
+                size = item.get("rys_block_size")
+                repeat = item.get("rys_repeat_count", "")
+                block_desc = f"{start}-{start + size - 1}" if start is not None and size is not None else ""
+                repeat_desc = str(repeat) if repeat != "" else ""
+            lines.append(
+                f"| {idx} | {item.get('name', '')} | {block_desc} | {repeat_desc} | {ppl} | {math_score} | {eq_score} | {json_score} | {loop} | {unknown} |"
+            )
+        lines.append("")
+
+    if failed:
+        lines.append("## Failures")
+        lines.append("")
+        for item in failed:
+            lines.append(f"- `{item.get('name', '')}`: {item.get('error', '')}")
+        lines.append("")
+
+    return "\n".join(lines) + "\n"
+
+
+def atomic_write_markdown(path: Path, summary: list[dict]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp_path = path.with_suffix(path.suffix + ".tmp")
+    tmp_path.write_text(build_markdown_summary(summary), encoding="utf-8")
+    tmp_path.replace(path)
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run a RYS scan end-to-end: build one model, eval it, record, then delete it.")
     parser.add_argument("--input-model", required=True)
@@ -48,6 +119,7 @@ def main() -> None:
     work_dir.mkdir(parents=True, exist_ok=True)
     experiments = json.loads(Path(args.config).read_text(encoding="utf-8"))
     manifest: list[dict] = []
+    aggregate_summary: list[dict] = []
 
     for exp in experiments:
         output_model = work_dir / f"{exp['name']}.pth"
@@ -114,6 +186,9 @@ def main() -> None:
 
         temp_manifest = work_dir / "current_manifest.json"
         temp_manifest.write_text(json.dumps([manifest[-1]], indent=2, ensure_ascii=False), encoding="utf-8")
+        temp_summary = work_dir / "_scan_tmp" / f"{exp['name']}.summary.json"
+        temp_summary.parent.mkdir(parents=True, exist_ok=True)
+        temp_markdown = work_dir / "_scan_tmp" / f"{exp['name']}.summary.md"
 
         eval_cmd = [
             args.python,
@@ -123,7 +198,7 @@ def main() -> None:
             "--tokenizer-path",
             args.tokenizer_path,
             "--summary-out",
-            args.summary_out,
+            str(temp_summary),
             "--device",
             args.device,
             "--dtype",
@@ -148,7 +223,7 @@ def main() -> None:
             args.probes,
         ]
         if args.markdown_out:
-            eval_cmd.extend(["--markdown-out", args.markdown_out])
+            eval_cmd.extend(["--markdown-out", str(temp_markdown)])
         if args.log_dir:
             eval_cmd.extend(["--log-dir", args.log_dir])
         if args.dataset_path:
@@ -165,6 +240,16 @@ def main() -> None:
         completed = subprocess.run(eval_cmd, check=False)
         if completed.returncode != 0 and args.stop_on_error:
             raise SystemExit(completed.returncode)
+        if completed.returncode == 0 and temp_summary.exists():
+            aggregate_summary.extend(json.loads(temp_summary.read_text(encoding="utf-8")))
+            atomic_write_json(Path(args.summary_out), aggregate_summary)
+            if args.markdown_out:
+                atomic_write_markdown(Path(args.markdown_out), aggregate_summary)
+
+    if aggregate_summary:
+        atomic_write_json(Path(args.summary_out), aggregate_summary)
+        if args.markdown_out:
+            atomic_write_markdown(Path(args.markdown_out), aggregate_summary)
 
 
 if __name__ == "__main__":
