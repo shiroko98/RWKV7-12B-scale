@@ -313,6 +313,32 @@ This multi-GPU runner:
 - writes separate temporary work dirs and shard summaries
 - merges all shard summaries into one final `summary.json` and optional `summary.md`
 
+### Full-scan result snapshot
+
+The completed `rys_scan_56l_full.json` sweep finished with `196 / 196` records and no failures.
+
+Main takeaway:
+
+- simple single-layer repetition (`block_size = 1`, repeated 24 times) is clearly not the right direction
+- large contiguous blocks copied a small number of times work much better
+- the current best RYS-style expansion is `block_size = 24`, repeated once
+
+Current RYS Top 5 by PPL:
+
+| Rank | Name | Block | Repeat | PPL |
+| --- | --- | --- | ---: | ---: |
+| 1 | `rwkv7-g1f-12b-expand-56l-rys-s4-b24` | `4-27` | 1 | `11.33` |
+| 2 | `rwkv7-g1f-12b-expand-56l-rys-s2-b24` | `2-25` | 1 | `11.36` |
+| 3 | `rwkv7-g1f-12b-expand-56l-rys-s3-b24` | `3-26` | 1 | `11.38` |
+| 4 | `rwkv7-g1f-12b-expand-56l-rys-s1-b24` | `1-24` | 1 | `11.59` |
+| 5 | `rwkv7-g1f-12b-expand-56l-rys-s5-b12` | `5-16` | 2 | `11.72` |
+
+Interpretation:
+
+- compared with the earlier naive single-layer copy idea, these large-block RYS variants are much better
+- within the RYS family, the best region is now `b24 x1`, followed by `b12 x2`
+- even so, the current best RYS result still trails the best pruning result (`PPL ~= 10.24`), so pruning remains the stronger line for now
+
 ## Batch generation
 
 ```bash
