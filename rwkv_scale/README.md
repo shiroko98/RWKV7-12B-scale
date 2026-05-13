@@ -253,13 +253,14 @@ python /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/tools/run_rys_scan.py \
   --work-dir /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/outputs/expanded_rys_tmp \
   --tokenizer-path /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/tokenizer/rwkv_vocab_v20250609.txt \
   --summary-out /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/outputs/evals/rys_full_scan_summary.json \
+  --markdown-out /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/outputs/evals/rys_full_scan_summary.md \
   --device cuda \
   --dtype bf16 \
   --task both \
   --dataset wikitext2 \
   --token-budget 8192 \
   --max-docs 128 \
-  --max-new-tokens 1200
+  --max-new-tokens 200
 ```
 
 This server flow does:
@@ -267,12 +268,20 @@ This server flow does:
 - build one expanded checkpoint
 - run evaluation
 - append the result to summary JSON
+- optionally refresh a readable Markdown table
 - delete the generated checkpoint and metadata by default
+- delete the temporary per-model eval JSON by default, so one scan mainly leaves `summary.json`, optional `summary.md`, and logs
 
 To include the lightweight RYS-style probes in the same run, add:
 
 ```bash
   --probes math,eq,json
+```
+
+If you explicitly want to keep each model's raw eval JSON too, add:
+
+```bash
+  --keep-per-model-json
 ```
 
 ## Batch generation

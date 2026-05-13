@@ -25,13 +25,18 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--max-docs", type=int, default=128)
     parser.add_argument("--token-budget", type=int, default=8192)
     parser.add_argument("--prompt", default="User: 请介绍一下北京。\n\nAssistant: ")
-    parser.add_argument("--max-new-tokens", type=int, default=1200)
+    parser.add_argument("--max-new-tokens", type=int, default=200)
     parser.add_argument("--temperature", type=float, default=0.8)
     parser.add_argument("--top-p", type=float, default=0.8)
     parser.add_argument("--probes", default="", help="Comma-separated probes to run: math,eq,json")
     parser.add_argument("--summary-out", required=True)
     parser.add_argument("--markdown-out", help="Optional Markdown summary output path.")
     parser.add_argument("--log-dir", help="Directory for per-model stdout/stderr logs.")
+    parser.add_argument(
+        "--keep-per-model-json",
+        action="store_true",
+        help="Keep each per-model eval JSON file. By default only the aggregate summary is preserved.",
+    )
     parser.add_argument("--keep-models", action="store_true")
     parser.add_argument("--keep-metadata", action="store_true")
     parser.add_argument("--stop-on-error", action="store_true")
@@ -93,8 +98,8 @@ def build_markdown_summary(summary: list[dict]) -> str:
         )
         lines.append("## By PPL")
         lines.append("")
-        lines.append("| Rank | Name | PPL | Math | EQ | JSON | Loop | Unknown |")
-        lines.append("| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |")
+        lines.append("| Rank | Name | Block | Repeat | PPL | Math | EQ | JSON | Loop | Unknown |")
+        lines.append("| --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |")
         for idx, item in enumerate(ranked, start=1):
             ppl = item.get("ppl", {}).get("ppl", "")
             probes = item.get("probes", {})
@@ -103,8 +108,18 @@ def build_markdown_summary(summary: list[dict]) -> str:
             json_score = probes.get("json", {}).get("mean_score", "")
             loop = item.get("generation_metrics", {}).get("max_loop_repeats", "")
             unknown = item.get("generation_metrics", {}).get("unknown_token_count", "")
+            rys_blocks = item.get("rys_blocks") or []
+            if rys_blocks:
+                block_desc = ",".join(f"{block.get('start')}-{block.get('start', 0) + block.get('size', 0) - 1}" for block in rys_blocks)
+                repeat_desc = ",".join(str(block.get("repeat", "")) for block in rys_blocks)
+            else:
+                start = item.get("rys_start_layer")
+                size = item.get("rys_block_size")
+                repeat = item.get("rys_repeat_count", "")
+                block_desc = f"{start}-{start + size - 1}" if start is not None and size is not None else ""
+                repeat_desc = str(repeat) if repeat != "" else ""
             lines.append(
-                f"| {idx} | {item.get('name', '')} | {ppl} | {math_score} | {eq_score} | {json_score} | {loop} | {unknown} |"
+                f"| {idx} | {item.get('name', '')} | {block_desc} | {repeat_desc} | {ppl} | {math_score} | {eq_score} | {json_score} | {loop} | {unknown} |"
             )
         lines.append("")
 
@@ -126,9 +141,12 @@ def atomic_write_markdown(path: Path, summary: list[dict]) -> None:
 
 
 def run_eval(args: argparse.Namespace, model_name: str, model_path: Path) -> tuple[int, Path]:
-    output_dir = Path(args.summary_out).parent
+    summary_path = Path(args.summary_out)
+    output_dir = summary_path.parent
     output_dir.mkdir(parents=True, exist_ok=True)
-    json_out = output_dir / f"{model_name}.eval.json"
+    temp_dir = output_dir / ".per_model_eval_tmp"
+    temp_dir.mkdir(parents=True, exist_ok=True)
+    json_out = temp_dir / f"{model_name}.eval.json"
     cmd = [
         args.python,
         str(ROOT / "evals" / "rwkv_eval.py"),
@@ -202,7 +220,19 @@ def main() -> None:
             "rys_block_size": item.get("rys_block_size"),
             "rys_repeat_count": item.get("rys_repeat_count"),
             "rys_blocks": item.get("rys_blocks"),
+            "block_label": "",
         }
+        if record["rys_blocks"]:
+            blocks = record["rys_blocks"]
+            record["block_label"] = ",".join(
+                f"{block.get('start')}-{block.get('start', 0) + block.get('size', 0) - 1}x{block.get('repeat', 1)}"
+                for block in blocks
+            )
+        elif record["rys_start_layer"] is not None and record["rys_block_size"] is not None:
+            start = int(record["rys_start_layer"])
+            size = int(record["rys_block_size"])
+            repeat = record["rys_repeat_count"]
+            record["block_label"] = f"{start}-{start + size - 1}x{repeat}"
 
         exit_code, json_out = run_eval(args, model_name, model_path)
         record["eval_json"] = str(json_out)
@@ -217,6 +247,8 @@ def main() -> None:
                 model_path.unlink()
             if not args.keep_metadata and metadata_path and metadata_path.exists():
                 metadata_path.unlink()
+            if not args.keep_per_model_json and json_out.exists():
+                json_out.unlink()
             if args.stop_on_error:
                 raise SystemExit(exit_code)
             continue
@@ -234,6 +266,8 @@ def main() -> None:
             model_path.unlink()
         if not args.keep_metadata and metadata_path and metadata_path.exists():
             metadata_path.unlink()
+        if not args.keep_per_model_json and json_out.exists():
+            json_out.unlink()
 
     print(f"\nSaved summary: {args.summary_out}")
 

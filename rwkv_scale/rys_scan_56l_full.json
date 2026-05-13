@@ -1,14 +1,5 @@
 [
   {
-    "name": "rwkv7-g1f-12b-expand-56l-rys-s0-b1",
-    "strategy": "rys_repeat",
-    "target_layers": 56,
-    "alpha": 0.5,
-    "rys_start_layer": 0,
-    "rys_block_size": 1,
-    "rys_repeat_count": 24
-  },
-  {
     "name": "rwkv7-g1f-12b-expand-56l-rys-s1-b1",
     "strategy": "rys_repeat",
     "target_layers": 56,
@@ -288,15 +279,6 @@
     "rys_repeat_count": 24
   },
   {
-    "name": "rwkv7-g1f-12b-expand-56l-rys-s0-b2",
-    "strategy": "rys_repeat",
-    "target_layers": 56,
-    "alpha": 0.5,
-    "rys_start_layer": 0,
-    "rys_block_size": 2,
-    "rys_repeat_count": 12
-  },
-  {
     "name": "rwkv7-g1f-12b-expand-56l-rys-s1-b2",
     "strategy": "rys_repeat",
     "target_layers": 56,
@@ -567,15 +549,6 @@
     "rys_repeat_count": 12
   },
   {
-    "name": "rwkv7-g1f-12b-expand-56l-rys-s0-b3",
-    "strategy": "rys_repeat",
-    "target_layers": 56,
-    "alpha": 0.5,
-    "rys_start_layer": 0,
-    "rys_block_size": 3,
-    "rys_repeat_count": 8
-  },
-  {
     "name": "rwkv7-g1f-12b-expand-56l-rys-s1-b3",
     "strategy": "rys_repeat",
     "target_layers": 56,
@@ -837,15 +810,6 @@
     "rys_repeat_count": 8
   },
   {
-    "name": "rwkv7-g1f-12b-expand-56l-rys-s0-b4",
-    "strategy": "rys_repeat",
-    "target_layers": 56,
-    "alpha": 0.5,
-    "rys_start_layer": 0,
-    "rys_block_size": 4,
-    "rys_repeat_count": 6
-  },
-  {
     "name": "rwkv7-g1f-12b-expand-56l-rys-s1-b4",
     "strategy": "rys_repeat",
     "target_layers": 56,
@@ -1098,15 +1062,6 @@
     "rys_repeat_count": 6
   },
   {
-    "name": "rwkv7-g1f-12b-expand-56l-rys-s0-b6",
-    "strategy": "rys_repeat",
-    "target_layers": 56,
-    "alpha": 0.5,
-    "rys_start_layer": 0,
-    "rys_block_size": 6,
-    "rys_repeat_count": 4
-  },
-  {
     "name": "rwkv7-g1f-12b-expand-56l-rys-s1-b6",
     "strategy": "rys_repeat",
     "target_layers": 56,
@@ -1341,15 +1296,6 @@
     "rys_repeat_count": 4
   },
   {
-    "name": "rwkv7-g1f-12b-expand-56l-rys-s0-b8",
-    "strategy": "rys_repeat",
-    "target_layers": 56,
-    "alpha": 0.5,
-    "rys_start_layer": 0,
-    "rys_block_size": 8,
-    "rys_repeat_count": 3
-  },
-  {
     "name": "rwkv7-g1f-12b-expand-56l-rys-s1-b8",
     "strategy": "rys_repeat",
     "target_layers": 56,
@@ -1566,15 +1512,6 @@
     "rys_repeat_count": 3
   },
   {
-    "name": "rwkv7-g1f-12b-expand-56l-rys-s0-b12",
-    "strategy": "rys_repeat",
-    "target_layers": 56,
-    "alpha": 0.5,
-    "rys_start_layer": 0,
-    "rys_block_size": 12,
-    "rys_repeat_count": 2
-  },
-  {
     "name": "rwkv7-g1f-12b-expand-56l-rys-s1-b12",
     "strategy": "rys_repeat",
     "target_layers": 56,
@@ -1753,15 +1690,6 @@
     "rys_start_layer": 20,
     "rys_block_size": 12,
     "rys_repeat_count": 2
-  },
-  {
-    "name": "rwkv7-g1f-12b-expand-56l-rys-s0-b24",
-    "strategy": "rys_repeat",
-    "target_layers": 56,
-    "alpha": 0.5,
-    "rys_start_layer": 0,
-    "rys_block_size": 24,
-    "rys_repeat_count": 1
   },
   {
     "name": "rwkv7-g1f-12b-expand-56l-rys-s1-b24",

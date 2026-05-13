@@ -27,10 +27,15 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--max-docs", type=int, default=128)
     parser.add_argument("--token-budget", type=int, default=8192)
     parser.add_argument("--prompt", default="User: 请介绍一下北京。\n\nAssistant: ")
-    parser.add_argument("--max-new-tokens", type=int, default=1200)
+    parser.add_argument("--max-new-tokens", type=int, default=200)
     parser.add_argument("--temperature", type=float, default=0.8)
     parser.add_argument("--top-p", type=float, default=0.8)
     parser.add_argument("--probes", default="", help="Comma-separated probes to run: math,eq,json")
+    parser.add_argument(
+        "--keep-per-model-json",
+        action="store_true",
+        help="Keep each per-model eval JSON file. By default only the aggregate summary is preserved.",
+    )
     parser.add_argument("--keep-models", action="store_true")
     parser.add_argument("--keep-metadata", action="store_true")
     parser.add_argument("--stop-on-error", action="store_true")
@@ -148,6 +153,8 @@ def main() -> None:
             eval_cmd.extend(["--log-dir", args.log_dir])
         if args.dataset_path:
             eval_cmd.extend(["--dataset-path", args.dataset_path])
+        if args.keep_per_model_json:
+            eval_cmd.append("--keep-per-model-json")
         if args.keep_models:
             eval_cmd.append("--keep-models")
         if args.keep_metadata:
