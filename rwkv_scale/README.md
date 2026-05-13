@@ -284,6 +284,35 @@ If you explicitly want to keep each model's raw eval JSON too, add:
   --keep-per-model-json
 ```
 
+Run the same scan on 8 GPUs in parallel:
+
+```bash
+python /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/tools/run_rys_scan_multigpu.py \
+  --input-model /mnt/data/Models/RWKV-7/rwkv7-g1f-7.2b-20260414-ctx8192.pth \
+  --config /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/rwkv_scale/rys_scan_56l_full.json \
+  --work-dir /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/outputs/expanded_rys_tmp \
+  --tokenizer-path /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/tokenizer/rwkv_vocab_v20250609.txt \
+  --summary-out /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/outputs/evals/rys_full_scan_summary.json \
+  --markdown-out /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/outputs/evals/rys_full_scan_summary.md \
+  --log-dir /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/outputs/evals/rys_full_scan_logs \
+  --gpu-ids 0,1,2,3,4,5,6,7 \
+  --device cuda \
+  --dtype bf16 \
+  --task both \
+  --dataset wikitext2 \
+  --probes math,eq,json \
+  --token-budget 8192 \
+  --max-docs 128 \
+  --max-new-tokens 200
+```
+
+This multi-GPU runner:
+
+- splits the config evenly across the listed GPUs
+- launches one worker process per GPU
+- writes separate temporary work dirs and shard summaries
+- merges all shard summaries into one final `summary.json` and optional `summary.md`
+
 ## Batch generation
 
 ```bash
