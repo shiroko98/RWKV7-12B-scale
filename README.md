@@ -251,6 +251,12 @@ python rwkv_scale/make_server_manifest.py ^
 
 Generate a RYS-style layer-repeat scan pack:
 
+This scan now uses strict RYS duplication only:
+
+- duplicate one contiguous block
+- insert only full repeated passes of that block
+- do not use prefix padding or partial-block fill
+
 ```bash
 python rwkv_scale/batch_expand.py ^
   --input-model D:\codes\RWKV7-12B-scale\rwkv7-g1f-7.2b-20260414-ctx8192.pth ^

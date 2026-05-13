@@ -132,7 +132,7 @@ Updated conclusion after the copy-focused round:
 - `tail_copy`: bias copied insertions toward later layers
 - `importance_copy`: duplicate layers with higher normalized weight-norm scores
 - `boundary_delta_copy`: duplicate layers after stronger neighbor-to-neighbor weight transitions
-- `rys_repeat`: repeat a contiguous layer block in RYS style until the target depth is reached
+- `rys_repeat`: strictly duplicate a contiguous layer block in full RYS-style passes only
 
 The current default batch is copy-only:
 
@@ -152,9 +152,15 @@ To test Repeat-Your-Self style contiguous block repetition on the 7.2B to 56-lay
 This config currently scans:
 
 - start layers: `0`, `8`, `16`, `24`
-- block sizes: `3`, `5`, `7`
+- candidate block sizes: `3`, `4`, `6`, `8`, `12`, `24`
+- after filtering, only start/block pairs fully inside the 32-layer source model are kept
 
-The `rys_repeat` strategy repeats a contiguous block as many whole times as possible to reach the requested target depth, and then copies a short prefix of that same block if a remainder is needed.
+The `rys_repeat` strategy is now strict RYS:
+
+- it duplicates one contiguous block
+- every duplicate pass must be a full block
+- it does not allow prefix padding or partial-block fill
+- for the current `32 -> 56` setup, the inserted depth is `24`, so valid block sizes must divide `24`
 
 Generate the default RYS scan pack:
 
@@ -171,9 +177,10 @@ Build a custom scan config if needed:
 ```bash
 python rwkv_scale/build_rys_scan_config.py ^
   --output D:\codes\RWKV7-12B-scale\rwkv_scale\rys_scan_custom.json ^
+  --original-layers 32 ^
   --target-layers 56 ^
   --starts 0,4,8,12,16,20,24,28 ^
-  --block-sizes 3,5,7
+  --block-sizes 3,4,6,8,12,24
 ```
 
 Rewrite the RYS manifest for Linux server paths:

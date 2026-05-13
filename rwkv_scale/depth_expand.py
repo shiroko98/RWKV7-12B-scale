@@ -6,7 +6,6 @@ import math
 import re
 from collections import OrderedDict
 from dataclasses import dataclass
-from dataclasses import field
 from pathlib import Path
 from typing import Any
 
@@ -41,8 +40,6 @@ class ExpansionPlan:
     rys_start_layer: int | None = None
     rys_block_size: int | None = None
     rys_repeat_count: int | None = None
-    rys_remainder: int = 0
-    rys_prefix_copy_layers: list[int] = field(default_factory=list)
 
 
 def parse_args() -> argparse.Namespace:
@@ -70,7 +67,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--rys-repeat-count",
         type=int,
-        help="Optional explicit RYS repeat count. Defaults to the largest full-block repeat count that fits.",
+        help="Optional explicit number of full contiguous-block duplications for strict RYS expansion.",
     )
     parser.add_argument("--metadata-out")
     parser.add_argument("--plan-only", action="store_true")
@@ -215,31 +212,29 @@ def build_plan(
                 f"RYS block ({rys_start_layer}:{rys_start_layer + rys_block_size}) exceeds the original layer range."
             )
 
+        if insertion_count % rys_block_size != 0 and rys_repeat_count is None:
+            raise ValueError(
+                "Strict RYS requires full contiguous-block duplication only. "
+                f"insertion_count={insertion_count} is not divisible by rys_block_size={rys_block_size}."
+            )
+
         auto_repeat_count = insertion_count // rys_block_size
         repeat_count = rys_repeat_count if rys_repeat_count is not None else auto_repeat_count
         if repeat_count <= 0:
-            raise ValueError(
-                f"RYS block size {rys_block_size} is too large for insertion_count={insertion_count}; "
-                "choose a smaller block or provide a valid repeat count."
-            )
+            raise ValueError("Strict RYS repeat count must be positive.")
 
         repeated_layers = repeat_count * rys_block_size
-        if repeated_layers > insertion_count:
+        if repeated_layers != insertion_count:
             raise ValueError(
-                f"RYS repeat count inserts {repeated_layers} layers, which exceeds the required {insertion_count}."
+                "Strict RYS does not allow partial-block padding. "
+                f"repeat_count * rys_block_size = {repeated_layers}, expected insertion_count = {insertion_count}."
             )
 
-        remainder = insertion_count - repeated_layers
         block_layers = info.layer_ids[rys_start_layer : rys_start_layer + rys_block_size]
-        prefix_copy_layers = block_layers[:remainder]
         notes = (
-            "RYS-style contiguous block repetition. "
-            f"Repeat layers {block_layers[0]}-{block_layers[-1]} for {repeat_count} full passes"
+            "Strict RYS contiguous block duplication. "
+            f"Repeat layers {block_layers[0]}-{block_layers[-1]} for {repeat_count} full passes."
         )
-        if remainder:
-            notes += f" and copy a {remainder}-layer prefix to exactly hit target depth."
-        else:
-            notes += "."
 
         return ExpansionPlan(
             strategy=strategy,
@@ -252,8 +247,6 @@ def build_plan(
             rys_start_layer=rys_start_layer,
             rys_block_size=rys_block_size,
             rys_repeat_count=repeat_count,
-            rys_remainder=remainder,
-            rys_prefix_copy_layers=prefix_copy_layers,
         )
 
     eligible_after_layers = info.layer_ids[1:-1]
@@ -425,7 +418,6 @@ def expand_depth_rys(state_dict: OrderedDict, info: LayerInfo, plan: ExpansionPl
         new_state_dict[key] = state_dict[key].clone()
 
     block_layers = info.layer_ids[plan.rys_start_layer : plan.rys_start_layer + plan.rys_block_size]
-    prefix_layers = plan.rys_prefix_copy_layers
     block_end = block_layers[-1]
 
     new_layer_idx = 0
@@ -440,10 +432,6 @@ def expand_depth_rys(state_dict: OrderedDict, info: LayerInfo, plan: ExpansionPl
             for source_layer in block_layers:
                 _copy_layer(state_dict, keys_by_layer, source_layer, new_layer_idx, new_state_dict)
                 new_layer_idx += 1
-
-        for source_layer in prefix_layers:
-            _copy_layer(state_dict, keys_by_layer, source_layer, new_layer_idx, new_state_dict)
-            new_layer_idx += 1
 
     if new_layer_idx != plan.target_layers:
         raise RuntimeError(f"Expected {plan.target_layers} layers after RYS expansion, got {new_layer_idx}.")
@@ -510,8 +498,6 @@ def main() -> None:
         print(f"RYS block start  : {plan.rys_start_layer}")
         print(f"RYS block size   : {plan.rys_block_size}")
         print(f"RYS repeats      : {plan.rys_repeat_count}")
-        print(f"RYS remainder    : {plan.rys_remainder}")
-        print(f"RYS prefix layers: {plan.rys_prefix_copy_layers}")
     print(f"Estimated params : {estimated_params(info, plan.target_layers):,}")
 
     metadata = {
@@ -529,8 +515,6 @@ def main() -> None:
         "rys_start_layer": plan.rys_start_layer,
         "rys_block_size": plan.rys_block_size,
         "rys_repeat_count": plan.rys_repeat_count,
-        "rys_remainder": plan.rys_remainder,
-        "rys_prefix_copy_layers": plan.rys_prefix_copy_layers,
         "n_embd": info.n_embd,
         "vocab_size": info.vocab_size,
         "n_head": info.n_head,

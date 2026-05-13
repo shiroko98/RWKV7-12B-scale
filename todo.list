@@ -88,8 +88,8 @@
 [DONE] Add RYS-style expansion scan support:
   - depth_expand.py now supports rys_repeat for contiguous layer-block repetition
   - batch_expand.py forwards RYS scan parameters from config files
-  - rwkv_scale/rys_scan_56l.json provides a starter scan over starts {0,8,16,24} and block sizes {3,5,7}
-  - rwkv_scale/build_rys_scan_config.py can generate larger custom scan configs
+  - rwkv_scale/rys_scan_56l.json now provides a strict-RYS starter scan over starts {0,8,16,24} and valid block sizes drawn from {3,4,6,8,12,24}
+  - rwkv_scale/build_rys_scan_config.py now filters to full-block-valid configs only
 
 [DONE] Prepare the copy-focused expansion round:
   - generated copy-focused checkpoints into outputs/expanded_copy_focus/
