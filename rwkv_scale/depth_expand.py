@@ -236,7 +236,7 @@ def build_plan(
     if strategy == "rys_repeat":
         normalized_blocks: list[dict[str, int]] = []
         if rys_blocks:
-            normalized_blocks = [dict(block) for block in rys_blocks]
+            normalized_blocks = sorted((dict(block) for block in rys_blocks), key=lambda block: int(block["start"]))
         else:
             if rys_start_layer is None or rys_block_size is None:
                 raise ValueError("rys_repeat requires either --rys-blocks or --rys-start-layer/--rys-block-size.")
@@ -254,6 +254,7 @@ def build_plan(
         total_inserted = 0
         block_descriptions: list[str] = []
         inserted_after_layers: list[int] = []
+        previous_end = -1
         for idx, block in enumerate(normalized_blocks):
             start = int(block["start"])
             size = int(block["size"])
@@ -270,14 +271,21 @@ def build_plan(
                     "dormant att.v* parameters that become active when copied to later layers. "
                     "Use --allow-layer0-rys only for explicit pathology experiments.".format(idx)
                 )
+            end = start + size - 1
             if start + size > info.n_layer:
                 raise ValueError(f"RYS block #{idx} ({start}:{start + size}) exceeds the original layer range.")
+            if start <= previous_end:
+                raise ValueError(
+                    "Strict multi-block RYS requires non-overlapping source blocks. "
+                    f"Block #{idx} ({start}-{end}) overlaps a previous block ending at layer {previous_end}."
+                )
             total_inserted += size * repeat
-            inserted_after_layers.append(info.layer_ids[start + size - 1])
-            block_descriptions.append(f"{start}-{start + size - 1} x{repeat}")
+            inserted_after_layers.append(info.layer_ids[end])
+            block_descriptions.append(f"{start}-{end} x{repeat}")
             block["start"] = start
             block["size"] = size
             block["repeat"] = repeat
+            previous_end = end
 
         if total_inserted != insertion_count:
             raise ValueError(

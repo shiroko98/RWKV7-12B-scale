@@ -1,0 +1,242 @@
+[
+  {
+    "name": "rwkv7-g1f-12b-expand-56l-rys-combo-fewblocks-k3-s2b9-s11b6-s17b9",
+    "strategy": "rys_repeat",
+    "target_layers": 56,
+    "alpha": 0.5,
+    "selection_label": "fewblocks-k3",
+    "selection_stats": {
+      "block_count": 3,
+      "sum_single_block_ppl": 32.706855,
+      "avg_single_block_ppl": 10.902285,
+      "max_single_block_ppl": 11.439006
+    },
+    "rys_blocks": [
+      {
+        "start": 2,
+        "size": 9,
+        "repeat": 1
+      },
+      {
+        "start": 11,
+        "size": 6,
+        "repeat": 1
+      },
+      {
+        "start": 17,
+        "size": 9,
+        "repeat": 1
+      }
+    ]
+  },
+  {
+    "name": "rwkv7-g1f-12b-expand-56l-rys-combo-fewblocks-k4-s3b9-s12b5-s17b7-s25b3",
+    "strategy": "rys_repeat",
+    "target_layers": 56,
+    "alpha": 0.5,
+    "selection_label": "fewblocks-k4",
+    "selection_stats": {
+      "block_count": 4,
+      "sum_single_block_ppl": 42.639912,
+      "avg_single_block_ppl": 10.659978,
+      "max_single_block_ppl": 10.928493
+    },
+    "rys_blocks": [
+      {
+        "start": 3,
+        "size": 9,
+        "repeat": 1
+      },
+      {
+        "start": 12,
+        "size": 5,
+        "repeat": 1
+      },
+      {
+        "start": 17,
+        "size": 7,
+        "repeat": 1
+      },
+      {
+        "start": 25,
+        "size": 3,
+        "repeat": 1
+      }
+    ]
+  },
+  {
+    "name": "rwkv7-g1f-12b-expand-56l-rys-combo-quality-k5-s3b2-s5b4-s9b8-s17b7-s25b3",
+    "strategy": "rys_repeat",
+    "target_layers": 56,
+    "alpha": 0.5,
+    "selection_label": "quality-k5",
+    "selection_stats": {
+      "block_count": 5,
+      "sum_single_block_ppl": 52.747543,
+      "avg_single_block_ppl": 10.549509,
+      "max_single_block_ppl": 10.928493
+    },
+    "rys_blocks": [
+      {
+        "start": 3,
+        "size": 2,
+        "repeat": 1
+      },
+      {
+        "start": 5,
+        "size": 4,
+        "repeat": 1
+      },
+      {
+        "start": 9,
+        "size": 8,
+        "repeat": 1
+      },
+      {
+        "start": 17,
+        "size": 7,
+        "repeat": 1
+      },
+      {
+        "start": 25,
+        "size": 3,
+        "repeat": 1
+      }
+    ]
+  },
+  {
+    "name": "rwkv7-g1f-12b-expand-56l-rys-combo-quality-k6-s3b2-s5b4-s9b6-s15b3-s18b6-s25b3",
+    "strategy": "rys_repeat",
+    "target_layers": 56,
+    "alpha": 0.5,
+    "selection_label": "quality-k6",
+    "selection_stats": {
+      "block_count": 6,
+      "sum_single_block_ppl": 63.056838,
+      "avg_single_block_ppl": 10.509473,
+      "max_single_block_ppl": 10.93329
+    },
+    "rys_blocks": [
+      {
+        "start": 3,
+        "size": 2,
+        "repeat": 1
+      },
+      {
+        "start": 5,
+        "size": 4,
+        "repeat": 1
+      },
+      {
+        "start": 9,
+        "size": 6,
+        "repeat": 1
+      },
+      {
+        "start": 15,
+        "size": 3,
+        "repeat": 1
+      },
+      {
+        "start": 18,
+        "size": 6,
+        "repeat": 1
+      },
+      {
+        "start": 25,
+        "size": 3,
+        "repeat": 1
+      }
+    ]
+  },
+  {
+    "name": "rwkv7-g1f-12b-expand-56l-rys-combo-anchor-s7b5-s3b2-s5b2-s7b5-s12b5-s17b7-s25b3",
+    "strategy": "rys_repeat",
+    "target_layers": 56,
+    "alpha": 0.5,
+    "selection_label": "anchor-s7b5",
+    "selection_stats": {
+      "block_count": 6,
+      "sum_single_block_ppl": 63.345746,
+      "avg_single_block_ppl": 10.557624,
+      "max_single_block_ppl": 10.928493
+    },
+    "rys_blocks": [
+      {
+        "start": 3,
+        "size": 2,
+        "repeat": 1
+      },
+      {
+        "start": 5,
+        "size": 2,
+        "repeat": 1
+      },
+      {
+        "start": 7,
+        "size": 5,
+        "repeat": 1
+      },
+      {
+        "start": 12,
+        "size": 5,
+        "repeat": 1
+      },
+      {
+        "start": 17,
+        "size": 7,
+        "repeat": 1
+      },
+      {
+        "start": 25,
+        "size": 3,
+        "repeat": 1
+      }
+    ]
+  },
+  {
+    "name": "rwkv7-g1f-12b-expand-56l-rys-combo-anchor-s7b8-s3b2-s5b2-s7b8-s15b3-s18b6-s25b3",
+    "strategy": "rys_repeat",
+    "target_layers": 56,
+    "alpha": 0.5,
+    "selection_label": "anchor-s7b8",
+    "selection_stats": {
+      "block_count": 6,
+      "sum_single_block_ppl": 63.303846,
+      "avg_single_block_ppl": 10.550641,
+      "max_single_block_ppl": 10.93329
+    },
+    "rys_blocks": [
+      {
+        "start": 3,
+        "size": 2,
+        "repeat": 1
+      },
+      {
+        "start": 5,
+        "size": 2,
+        "repeat": 1
+      },
+      {
+        "start": 7,
+        "size": 8,
+        "repeat": 1
+      },
+      {
+        "start": 15,
+        "size": 3,
+        "repeat": 1
+      },
+      {
+        "start": 18,
+        "size": 6,
+        "repeat": 1
+      },
+      {
+        "start": 25,
+        "size": 3,
+        "repeat": 1
+      }
+    ]
+  }
+]

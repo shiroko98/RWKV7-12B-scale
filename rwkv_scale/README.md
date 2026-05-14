@@ -164,12 +164,14 @@ Additional configs:
 - `rys_scan_56l_half_min3.json`: a reduced scan with `block_size >= 3` and `block_size <= 16`
 - `rys_scan_56l_combo_example.json`: examples of multi-block strict-RYS combinations
 - `rys_scan_repeat1_b2_b9.json`: single-block scan with `repeat_count = 1`, `block_size = 2..9`, and `target_layers = 32 + block_size`
+- `rys_combo_56l_from_repeat1.json`: non-overlapping multi-block 56-layer combos selected from the repeat=1 scan results
 
 The `rys_repeat` strategy is now strict RYS:
 
 - it duplicates one contiguous block
 - every duplicate pass must be a full block
 - it does not allow prefix padding or partial-block fill
+- when `rys_blocks` is used, source blocks must be non-overlapping
 - for the current `32 -> 56` setup, the inserted depth is `24`, so valid block sizes must divide `24`
 - by default, it does not allow blocks that start at `layer 0`, because RWKV block 0 has special `ln0` / `v_first` behavior and dormant `att.v*` parameters that are not semantically equivalent to later layers
 
@@ -245,6 +247,72 @@ This config keeps:
 - `block_size = 2..9`
 - `target_layers = 32 + block_size`
 - no `layer 0` starts by default
+
+Build a multi-block 56-layer combo pack from the repeat=1 scan summary:
+
+```bash
+python rwkv_scale/build_rys_combo_config.py ^
+  --summary-json D:\fsdownload\rys_repeat1_b2_b9_summary.json ^
+  --output-config D:\codes\RWKV7-12B-scale\rwkv_scale\rys_combo_56l_from_repeat1.json ^
+  --output-report D:\codes\RWKV7-12B-scale\outputs\evals\rys_combo_56l_from_repeat1.md
+```
+
+Current combo-selection heuristic:
+
+- source blocks come from the existing `repeat_count = 1` scan results
+- all chosen blocks must be non-overlapping
+- total inserted depth must be exactly `24`, so the final model reaches `56` layers
+- the selector emits several styles of candidates:
+  - fewer, larger blocks (`k=3`, `k=4`)
+  - higher-quality but more fragmented mixes (`k=5`, `k=6`)
+  - anchor combos that explicitly keep top-ranked mid-layer blocks such as `s7-b5` or `s7-b8`
+- by default it filters away:
+  - `start < 2`
+  - `end > 28`
+  - single-block PPL `>= 12`
+
+Run the combo pack on the server:
+
+```bash
+python /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/tools/run_rys_scan.py \
+  --input-model /mnt/data/Models/RWKV-7/rwkv7-g1f-7.2b-20260414-ctx8192.pth \
+  --config /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/rwkv_scale/rys_combo_56l_from_repeat1.json \
+  --work-dir /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/outputs/expanded_rys_combo_tmp \
+  --tokenizer-path /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/tokenizer/rwkv_vocab_v20250609.txt \
+  --summary-out /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/outputs/evals/rys_combo_56l_summary.json \
+  --markdown-out /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/outputs/evals/rys_combo_56l_summary.md \
+  --log-dir /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/outputs/evals/rys_combo_56l_logs \
+  --device cuda \
+  --dtype bf16 \
+  --task both \
+  --dataset wikitext2 \
+  --probes math,eq,json \
+  --token-budget 8192 \
+  --max-docs 128 \
+  --max-new-tokens 200
+```
+
+Or shard the same combo pack across 8 GPUs:
+
+```bash
+python /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/tools/run_rys_scan_multigpu.py \
+  --input-model /mnt/data/Models/RWKV-7/rwkv7-g1f-7.2b-20260414-ctx8192.pth \
+  --config /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/rwkv_scale/rys_combo_56l_from_repeat1.json \
+  --work-dir /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/outputs/expanded_rys_combo_tmp \
+  --tokenizer-path /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/tokenizer/rwkv_vocab_v20250609.txt \
+  --summary-out /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/outputs/evals/rys_combo_56l_summary.json \
+  --markdown-out /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/outputs/evals/rys_combo_56l_summary.md \
+  --log-dir /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/outputs/evals/rys_combo_56l_logs \
+  --gpu-ids 0,1,2,3,4,5,6,7 \
+  --device cuda \
+  --dtype bf16 \
+  --task both \
+  --dataset wikitext2 \
+  --probes math,eq,json \
+  --token-budget 8192 \
+  --max-docs 128 \
+  --max-new-tokens 200
+```
 
 If you want a more conservative search closer to the common RYS intuition, you can cap the block size to half depth:
 
