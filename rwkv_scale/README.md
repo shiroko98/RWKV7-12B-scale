@@ -314,6 +314,110 @@ python /mnt/data/Codes/RWKV/RWKV-Scale/RWKV7-12B-scale/tools/run_rys_scan_multig
   --max-new-tokens 200
 ```
 
+### 56-layer combo result snapshot
+
+The first multi-block 56-layer combo round has finished. Main result:
+
+- fewer, larger non-overlapping RYS blocks work better than more fragmented combinations
+- the best combo is still weaker than the best pruning result, but it is better than the earlier direct copy-only expansion baselines
+
+Server eval snapshot on `wikitext2` with `--token-budget 8192 --max-docs 128 --max-new-tokens 200`:
+
+- `fewblocks-k4`:
+  - blocks: `3-11, 12-16, 17-23, 25-27`
+  - `PPL ~= 12.09`
+  - best overall combo in this round
+- `fewblocks-k3`:
+  - blocks: `2-10, 11-16, 17-25`
+  - `PPL ~= 12.21`
+  - second-best by PPL
+  - best `json` probe among the 6 tested combos
+- `quality-k5`: `PPL ~= 13.06`
+- `quality-k6`: `PPL ~= 13.22`
+- `anchor-s7b8`: `PPL ~= 13.40`
+- `anchor-s7b5`: `PPL ~= 13.91`
+
+Interpretation:
+
+- preserving top-ranked single blocks such as `s7-b5` or `s7-b8` did not automatically produce the best 56-layer combo
+- once the model is expanded to 56 layers, block interaction matters more than the single-block ranking alone
+- the current best follow-up candidates are:
+  - `fewblocks-k4`
+  - `fewblocks-k3`
+
+Compared with earlier depth-only copy baselines:
+
+- `fewblocks-k4` improved over the earlier `tail_copy` baseline (`PPL ~= 12.78`)
+- but it still trails the best pruning result (`PPL ~= 10.24`) and also trails the original `7.2B` base model (`PPL ~= 10.04`)
+
+### Why good single blocks do not necessarily compose well
+
+Let the baseline loss be `L0`, and let `L(S)` be the loss after duplicating a set of RYS blocks `S`.
+
+For one block `i`, define the single-block gain:
+
+```text
+Δi = L({i}) - L0
+```
+
+If `Δi < 0`, block `i` helps by itself.
+
+For a multi-block combination `S`, the loss change can be expanded as:
+
+```text
+Δ(S) = L(S) - L0
+     ≈ Σ(i∈S) Δi + Σ(i<j, i,j∈S) Iij + Σ(i<j<k) Iijk + ...
+```
+
+where:
+
+- `Δi` is the single-block effect
+- `Iij` is the pairwise interaction term
+- higher-order terms capture three-block and larger interactions
+
+Only in the nearly additive case, where all interaction terms are small, do we get:
+
+```text
+Δ(S) ≈ Σ(i∈S) Δi
+```
+
+and then "good single blocks imply a good combination".
+
+In the real model, these interaction terms are not negligible, so the true condition is:
+
+```text
+Σ(i∈S) Δi + Σ(i<j) Iij + Σ(i<j<k) Iijk + ... < 0
+```
+
+This explains the observed result:
+
+- single-block `repeat=1` scans were useful for locating promising regions
+- but simply combining many individually good blocks did not guarantee a better 56-layer model
+- the more fragmented `k=5` / `k=6` combos were worse than the simpler `k=3` / `k=4` combos
+
+The same idea can be written as a second-order selection model:
+
+```text
+Score(S) ≈ Σ ai zi + Σ bij zi zj
+```
+
+where:
+
+- `zi ∈ {0,1}` indicates whether block `i` is selected
+- `ai` comes from the single-block scan
+- `bij` is the pairwise interaction between blocks `i` and `j`
+
+Practical implication:
+
+- single-block scans estimate only `ai`
+- to predict combinations better, we need at least a partial two-block scan to estimate `bij`
+
+So the next mathematically motivated step is:
+
+1. keep `fewblocks-k4` and `fewblocks-k3` as the current best two combos
+2. run a small targeted two-block scan around the strongest mid-layer regions
+3. fit a simple pairwise combo scorer before launching a much larger multi-block search
+
 If you want a more conservative search closer to the common RYS intuition, you can cap the block size to half depth:
 
 ```bash
