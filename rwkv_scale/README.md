@@ -450,6 +450,11 @@ The separate strict-RYS full scan already tested the "single block, repeated man
 | 9 | `s6-b12` | 2 | 11.9886 |
 | 10 | `s7-b12` | 2 | 12.2255 |
 
+The current best saved single-block expansion target is:
+
+- `s4-b24 -> 56 layers`
+- generator: `tools/generate_best_rys_s4_b24.py`
+
 The important pattern is:
 
 - the top `repeat=1` blocks are very good as local hotspots
