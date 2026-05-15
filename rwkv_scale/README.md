@@ -418,6 +418,45 @@ So the next mathematically motivated step is:
 2. run a small targeted two-block scan around the strongest mid-layer regions
 3. fit a simple pairwise combo scorer before launching a much larger multi-block search
 
+### Top-10 source blocks and repeat-scan conclusion
+
+The key source rankings from `repeat=1` are:
+
+| Rank | Block | PPL |
+| --- | --- | ---: |
+| 1 | `s7-b5` | 9.8982 |
+| 2 | `s9-b3` | 9.9195 |
+| 3 | `s7-b8` | 9.9550 |
+| 4 | `s8-b4` | 9.9568 |
+| 5 | `s9-b6` | 9.9791 |
+| 6 | `s7-b6` | 9.9869 |
+| 7 | `s6-b6` | 9.9902 |
+| 8 | `s8-b7` | 9.9967 |
+| 9 | `s7-b9` | 10.0240 |
+| 10 | `s9-b4` | 10.0252 |
+
+The separate strict-RYS full scan already tested the "single block, repeated many times to fill 24 inserted layers" mode. The top results there were:
+
+| Rank | Block | Repeat | PPL |
+| --- | --- | ---: | ---: |
+| 1 | `s4-b24` | 1 | 11.3322 |
+| 2 | `s2-b24` | 1 | 11.3606 |
+| 3 | `s3-b24` | 1 | 11.3816 |
+| 4 | `s1-b24` | 1 | 11.5946 |
+| 5 | `s5-b12` | 2 | 11.7200 |
+| 6 | `s3-b12` | 2 | 11.7392 |
+| 7 | `s4-b12` | 2 | 11.8075 |
+| 8 | `s5-b24` | 1 | 11.8275 |
+| 9 | `s6-b12` | 2 | 11.9886 |
+| 10 | `s7-b12` | 2 | 12.2255 |
+
+The important pattern is:
+
+- the top `repeat=1` blocks are very good as local hotspots
+- but using only `top-50` repeat=1 blocks cannot even cover 24 inserted layers without overlap
+- when a block is repeated many times, larger blocks with fewer repeats are much more stable than small blocks with many repeats
+- this matches the interaction model above: too many repeats or too many distinct blocks both amplify interaction terms
+
 If you want a more conservative search closer to the common RYS intuition, you can cap the block size to half depth:
 
 ```bash
